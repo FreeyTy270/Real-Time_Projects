@@ -33,6 +33,6 @@ void USART_IRQHandler(USART_TypeDef * USARTx, uint8_t *buffer, uint32_t * pRx_co
 
 void USART2_Init(int baudrate);
 
-void get_line(void *buffer, int midpoint);
+void get_line(unsigned char *buffer, int midpoint);
 
 #endif /* INC_UART_H_ */

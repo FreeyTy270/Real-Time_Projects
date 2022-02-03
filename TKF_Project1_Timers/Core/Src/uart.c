@@ -10,6 +10,7 @@
 // PD.5 = USART2_TX (AF7)  |  PD.6 = USART2_RX (AF7)
 
 #include "uart.h"
+#include "string.h"
 
 void USART2_Init(int baudrate)
 {
@@ -131,11 +132,12 @@ void USART_IRQHandler(USART_TypeDef * USARTx, uint8_t *buffer, uint32_t * pRx_co
 	}
 }
 
-void get_line(void *buffer, int max_size)
+void get_line(unsigned char *buffer, int max_size)
 {
 	unsigned char new_char = '\0';
 	int i = 0;
 
+	memset(buffer, 0, max_size);
 	do
 	{
 		new_char = USART_Read(USART2);
@@ -143,12 +145,16 @@ void get_line(void *buffer, int max_size)
 		if(new_char == '\b' && i > 0)
 		{
 			i--;
-			//new_char = '\0';
+			buffer[i] = new_char;
+			USART_Write(USART2, &new_char, sizeof(new_char));
+		}
+		else
+		{
+			buffer[i] = new_char;
+			USART_Write(USART2, &new_char, sizeof(new_char));
+			i++;
 		}
 
-		(*(unsigned char *) buffer) = new_char;
-		USART_Write(USART2, &new_char, sizeof(new_char));
-		i++;
 
 	}while(new_char != '\r' && i < max_size);
 }

@@ -59,8 +59,8 @@ all: main-build
 main-build: TKF_Project1_Timers.elf secondary-outputs
 
 # Tool invocations
-TKF_Project1_Timers.elf: $(OBJS) $(USER_OBJS) C:\Users\Ty\ Freeman\Documents\Classes\Real-Time\TKF_Project1_Timers\STM32L476RGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "TKF_Project1_Timers.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Ty Freeman\Documents\Classes\Real-Time\TKF_Project1_Timers\STM32L476RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="TKF_Project1_Timers.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
+TKF_Project1_Timers.elf: $(OBJS) $(USER_OBJS) C:\Users\Ty\ Freeman\Documents\Classes\Spring\ 2022\Real-Time\STM-Projects\GitHub\Real-Time_Projects\TKF_Project1_Timers\STM32L476RGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "TKF_Project1_Timers.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Ty Freeman\Documents\Classes\Spring 2022\Real-Time\STM-Projects\GitHub\Real-Time_Projects\TKF_Project1_Timers\STM32L476RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="TKF_Project1_Timers.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

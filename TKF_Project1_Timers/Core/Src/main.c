@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "stdio.h"
+#include "string.h"
 #include "main.h"
 #include "uart.h"
 #include "timer.h"
@@ -32,7 +33,7 @@ int main(void)
 {
 
   clock_init();
-  USART2_Init(115200);
+  USART2_Init(9600);
   //TIM2_init();
 
 
@@ -44,12 +45,15 @@ int main(void)
   {
 	  n = sprintf((char *) out_buffer, "What would you like to say?\r\n");
 	  USART_Write(USART2, out_buffer, n);
+	  memset(out_buffer, 0, MAX_SIZE);
 
 	  get_line(in_buffer, MAX_SIZE);
 	  n = sprintf((char *) out_buffer, "Is this what you said?\r\n");
 	  USART_Write(USART2, out_buffer, n);
+	  memset(out_buffer, 0, MAX_SIZE);
 	  n = sprintf((char *) out_buffer, "Message: %s\r\n", in_buffer);
 	  USART_Write(USART2, out_buffer, n);
+	  memset(out_buffer, 0, MAX_SIZE);
   }
 }
 
