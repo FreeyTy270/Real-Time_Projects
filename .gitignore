@@ -1,2 +1,9 @@
 *.metadata
 *.settings
+*.xml
+*.prefs
+*.o
+TKF_Project1_Timers/Debug/makefile
+*.map
+*.list
+*.elf
