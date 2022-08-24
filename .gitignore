@@ -1,5 +1,6 @@
 .metadata/
-.settings/
+**/.settings/
+**/Debug/
 *.xml
 *.prefs
 *.o
