@@ -1,2 +1,0 @@
-button.c:14:6:button_init	4	static
-button.c:24:7:button_isPressed	16	static

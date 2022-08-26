@@ -1,3 +1,0 @@
-led.c:19:6:led_init	4	static
-led.c:33:6:led_set	16	static
-led.c:41:7:led_isOn	16	static
