@@ -1,5 +1,0 @@
-uart.c:15:6:USART2_Init	32	static
-uart.c:92:9:USART_Read	16	static
-uart.c:100:6:USART_Write	32	static
-uart.c:114:6:USART_IRQHandler	24	static
-uart.c:135:6:get_line	24	static
