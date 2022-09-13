@@ -57,20 +57,22 @@ void TIM_Init(void);
 //  - The init section is run once at startup and initializes all low level drivers and modules
 //  - The main loop runs forever and calls the application tasks repeatedly.
 ////////////////
+
+uint8_t out_buffer [MAX_SIZE] = {0};
+uint8_t in_buffer [MAX_SIZE] = {0};
+int n = 0;
+
 int main(void) {
     //uint32_t lower_limit = 1000 - 50;	// the default lower limit in the problem statement
 
     //////////
     // Initialization executed once at startup
     //////////
-    USART2_Init(115200);
+	clock_init();
+    USART2_Init(9600);
     //TIM_Init();
 
     //while( power_on_self_test() != 0);
-
-    uint8_t out_buffer [MAX_SIZE] = {0};
-    uint8_t in_buffer [MAX_SIZE] = {0};
-    int n = 0;
 
     //////////
     // Main loop runs forever
@@ -79,7 +81,7 @@ int main(void) {
     {
 
     	 n = sprintf((char *) out_buffer, "What would you like to say?\r\n");
-    	 USART_Write(USART2, out_buffer, n);
+    	 USART_Write(USART2, out_buffer, MAX_SIZE);
     	 memset(out_buffer, 0, MAX_SIZE);
 
     	 get_line(in_buffer, MAX_SIZE);

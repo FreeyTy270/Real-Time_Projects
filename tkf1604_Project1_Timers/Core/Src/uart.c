@@ -5,6 +5,7 @@
 // PD.5 = USART2_TX (AF7)  |  PD.6 = USART2_RX (AF7)
 
 #include <uart.h>
+#include "string.h"
 
 void USART2_Init(int baudrate)
 {
@@ -141,12 +142,12 @@ void get_line(unsigned char *buffer, int max_size)
 		{
 			i--;
 			buffer[i] = new_char;
-			USART_Write(USART2, &new_char, sizeof(new_char));
+			//USART_Write(USART2, &new_char, sizeof(new_char));
 		}
 		else
 		{
 			buffer[i] = new_char;
-			USART_Write(USART2, &new_char, sizeof(new_char));
+			//USART_Write(USART2, &new_char, sizeof(new_char));
 		}
 
 		(*(unsigned char *) buffer) = new_char;
