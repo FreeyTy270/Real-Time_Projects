@@ -48,6 +48,14 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 char message[50];    // message to print to the user
 unsigned char buffer[20];	     // holds the user response
+int measurements[1000] = {0};
+int meas_index = 0;
+
+uint8_t ic_val_1 = 0;
+uint8_t ic_val_2 = 0;
+uint8_t diff = 0;
+int first_flg = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -72,8 +80,9 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	int buckets[101];
-	int starting_frequency = 1000;
-
+	int mid_frequency = 1000;
+	int lower_limit = mid_frequency - 50;
+	int upper_limit = lower_limit + 100;
 
 
 
@@ -104,18 +113,31 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_TIM_Base_Start(&htim2); // Starts timer 2
+  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1); // Starts timer 2 in input capture mode
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (power_on_self_test() == false)
+  while (power_on_self_test() == 1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  printf("Enter a number: \n\r");
-	  get_line(&buffer, MAX_SIZE);
+	  printf("LowerLimit Frequency: %d\n\r", lower_limit);
+	  printf("Initial Midpoint Frequency: %d\n\r", mid_frequency);
+	  printf("UpperLimit Frequency: %d\nIs this okay?: ", upper_limit);
+	  get_line(buffer, MAX_SIZE);
+	  printf("\n\r");
+	  if(buffer == 'N' || 'n')
+	  {
+		  memset(buffer, 0, sizeof(buffer));
+		  printf("Please specify a new lower limit: ");
+		  get_line(buffer, MAX_SIZE);
+
+		  mid_frequency = atoi(buffer);
+		  int lower_limit = mid_frequency - 50;
+		  int upper_limit = lower_limit + 100;
+	  }
 	  printf("This is what I read: %s\n\r", buffer);
 	  HAL_Delay(100);
   }
@@ -191,7 +213,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 80;
+  htim2.Init.Prescaler = 80 - 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 4294967295;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -298,7 +320,38 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+_Bool power_on_self_test(void)
+{
+	return 1;
+}
 
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+	{
+		if(first_flg == 0)
+		{
+			ic_val_1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+			first_flg = 1;
+		}
+		else
+		{
+			ic_val_2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+
+			if(ic_val_2 > ic_val_1)
+			{
+				measurements[meas_index] = ic_val_2 - ic_val_1;
+				meas_index += 1;
+			}
+			else if(ic_val_1 > ic_val_2)
+			{
+				measurements[meas_index] = (0xffff - ic_val_1) + ic_val_2;
+				meas_index += 1;
+			}
+			first_flg = 0; // reset the first value flag
+		}
+	}
+}
 /* USER CODE END 4 */
 
 /**
