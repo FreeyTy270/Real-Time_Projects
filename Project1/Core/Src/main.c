@@ -116,7 +116,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (power_on_self_test() == 1)
+  while (power_on_self_test() == 0)
   {
     /* USER CODE END WHILE */
 
@@ -147,7 +147,7 @@ int main(void)
 
 	  for(int i = 0; i <= sizeof(buckets); i++)
 	  {
-		  buckets[1][i] = lower_limit + 1;
+		  buckets[0][i] = lower_limit + i;
 	  }
 
 	  while(full_flg == 0)
@@ -161,9 +161,9 @@ int main(void)
 
 	  for(int i = 0; i <sizeof(buckets); i++)
 	  {
-		  if(buckets[2][i] != 0)
+		  if(buckets[1][i] != 0)
 		  {
-			  printf("%d: \t%d\n\r", buckets[1][i], buckets[2][i]);
+			  printf("%d: \t%d\n\r", buckets[0][i], buckets[1][i]);
 		  }
 	  }
 
@@ -358,12 +358,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-_Bool power_on_self_test(void)
+int power_on_self_test(void)
 {
 	HAL_Delay(500);
 	if(measurements != 0)
 	{
-		memset(measurements, 0, MAX_SIZE);
+		//memset(measurements, 0, MAX_SIZE);
 		return 0;
 	}
 	return 1;
@@ -376,10 +376,10 @@ void measurement_manager()
 		for(int j = 0; j <= sizeof(buckets); j++)
 		{
 			int count = 0;
-			if(measurements[i] == buckets[1][j])
+			if(measurements[i] == buckets[0][j])
 			{
 				count++;
-				buckets[2][i] = count;
+				buckets[1][i] = count;
 			}
 		}
 	}
