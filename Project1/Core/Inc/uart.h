@@ -8,6 +8,6 @@
 #ifndef INC_UART_H_
 #define INC_UART_H_
 
-void get_line(unsigned char *buffer, int midpoint);
+int get_line(unsigned char *buffer, int midpoint);
 
 #endif /* INC_UART_H_ */

@@ -9,7 +9,7 @@
 
 extern UART_HandleTypeDef huart2;
 
-void get_line(unsigned char *buffer, int max_size)
+int get_line(unsigned char *buffer, int max_size)
 {
 	unsigned char new_char = '\0';
 	int i = 0;
@@ -37,4 +37,6 @@ void get_line(unsigned char *buffer, int max_size)
 		HAL_UART_Transmit(&huart2, &new_char, sizeof(new_char), HAL_MAX_DELAY);
 
 	}while(new_char != '\r' && i < max_size);
+
+	return i; // Returns length of string in buffer
 }

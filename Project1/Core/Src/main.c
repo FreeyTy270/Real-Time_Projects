@@ -22,7 +22,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
+#include "stdlib.h"
 #include "uart.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,15 +48,16 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-char message[50];    // message to print to the user
-unsigned char buffer[20];	     // holds the user response
+uint8_t buffer[20] = {0};	     // holds the user response
 int measurements[1000] = {0};
+int buckets[2][101] = {0};
 int meas_index = 0;
 
 uint8_t ic_val_1 = 0;
 uint8_t ic_val_2 = 0;
 uint8_t diff = 0;
 int first_flg = 0;
+int full_flg = 0;
 
 /* USER CODE END PV */
 
@@ -79,16 +82,11 @@ static void MX_TIM2_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	int buckets[101];
 	int mid_frequency = 1000;
 	int lower_limit = mid_frequency - 50;
 	int upper_limit = lower_limit + 100;
 
-
-
-
-
-
+	char *pend;
 
   /* USER CODE END 1 */
 
@@ -113,7 +111,7 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1); // Starts timer 2 in input capture mode
+  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1); // Starts timer 2 in input capture mode
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -123,23 +121,63 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  printf("LowerLimit Frequency: %d\n\r", lower_limit);
-	  printf("Initial Midpoint Frequency: %d\n\r", mid_frequency);
-	  printf("UpperLimit Frequency: %d\nIs this okay?: ", upper_limit);
+	  printf("\n\rWelcome to the Internet\n\r\tLowerLimit Frequency: %d\n\r", lower_limit);
+	  printf("\tInitial Midpoint Frequency: %d\n\r", mid_frequency);
+	  printf("\tUpperLimit Frequency: %d\n\r", upper_limit);
+	  printf("Is this okay?: \n");
 	  get_line(buffer, MAX_SIZE);
-	  printf("\n\r");
-	  if(buffer == 'N' || 'n')
+	  printf("This is the buffer: %s\n\r", buffer);
+
+	  if(strchr(buffer, 'n') || strchr(buffer, 'N') || strchr(buffer, 'No') || strchr(buffer, 'no'))
 	  {
 		  memset(buffer, 0, sizeof(buffer));
-		  printf("Please specify a new lower limit: ");
+		  printf("Please specify a new lower limit: \n\r");
 		  get_line(buffer, MAX_SIZE);
+		  //HAL_Delay(500);
 
-		  mid_frequency = atoi(buffer);
-		  int lower_limit = mid_frequency - 50;
-		  int upper_limit = lower_limit + 100;
+		  mid_frequency = strtol(buffer, &pend, 10);
+		  lower_limit = mid_frequency - 50;
+		  upper_limit = lower_limit + 100;
+		  printf("This is the middle frequency: %d\n\r", mid_frequency);
+		  printf("\tLowerLimit Frequency: %d\n\r", lower_limit);
+		  printf("\tUpperLimit Frequency: %d\n\r", upper_limit);
+
+		  printf("\n\r");
 	  }
-	  printf("This is what I read: %s\n\r", buffer);
-	  HAL_Delay(100);
+
+	  for(int i = 0; i <= sizeof(buckets); i++)
+	  {
+		  buckets[1][i] = lower_limit + 1;
+	  }
+
+	  while(full_flg == 0)
+	  {
+		  printf("Measuring...\n\r");
+	  }
+
+	  measurement_manager();
+
+	  printf("Measuring complete, displaying results: \n\r");
+
+	  for(int i = 0; i <sizeof(buckets); i++)
+	  {
+		  if(buckets[2][i] != 0)
+		  {
+			  printf("%d: \t%d\n\r", buckets[1][i], buckets[2][i]);
+		  }
+	  }
+
+	  printf("Play again?\n\r");
+	  get_line(buffer, MAX_SIZE);
+
+	  if(strchr(buffer, 'n') || strchr(buffer, 'N') || strchr(buffer, 'No') || strchr(buffer, 'no'))
+	  {
+		  printf("Thanks for playing. Have a good day!\n\r");
+		  return 0;
+	  }
+
+
+
   }
   /* USER CODE END 3 */
 }
@@ -322,7 +360,29 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 _Bool power_on_self_test(void)
 {
+	HAL_Delay(500);
+	if(measurements != 0)
+	{
+		memset(measurements, 0, MAX_SIZE);
+		return 0;
+	}
 	return 1;
+}
+
+void measurement_manager()
+{
+	for(int i = 0; i <= sizeof(measurements); i++)
+	{
+		for(int j = 0; j <= sizeof(buckets); j++)
+		{
+			int count = 0;
+			if(measurements[i] == buckets[1][j])
+			{
+				count++;
+				buckets[2][i] = count;
+			}
+		}
+	}
 }
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
@@ -349,6 +409,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 				meas_index += 1;
 			}
 			first_flg = 0; // reset the first value flag
+			if (meas_index == 1000)
+			{
+				HAL_TIM_IC_Stop_IT(htim, TIM_CHANNEL_1);
+				full_flg = 1;
+			}
 		}
 	}
 }
