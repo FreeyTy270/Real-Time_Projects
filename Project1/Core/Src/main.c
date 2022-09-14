@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
+#include "uart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,6 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define MAX_SIZE 50
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,8 +47,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 char message[50];    // message to print to the user
-char buffer[20];	     // holds the user response
-
+unsigned char buffer[20];	     // holds the user response
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,6 +71,15 @@ static void MX_TIM2_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	int buckets[101];
+	int starting_frequency = 1000;
+
+
+
+
+
+
+
 
   /* USER CODE END 1 */
 
@@ -79,7 +89,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  TIM_Init();
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -95,16 +104,20 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_TIM_Base_Start(&htim2); // Starts timer 2
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
+  while (power_on_self_test() == false)
   {
     /* USER CODE END WHILE */
-	  printf("What would you like to say?\n");
-	  scanf()
+
     /* USER CODE BEGIN 3 */
+	  printf("Enter a number: \n\r");
+	  get_line(&buffer, MAX_SIZE);
+	  printf("This is what I read: %s\n\r", buffer);
+	  HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
