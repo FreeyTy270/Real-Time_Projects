@@ -51,12 +51,12 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint32_t buffer[20] = {0};	     // holds the user response
-int measurements[1000] = {0};
-
+int measurements[1002] = {0};
+int buckets[101][2] = {0};
 uint32_t ic_val_1 = 0;
 uint32_t ic_val_2 = 0;
 int first_flg = 0;
-int int_flg = 0;
+_Bool int_flg = 0;
 float frequency = 0;
 
 /* USER CODE END PV */
@@ -86,8 +86,8 @@ int main(void)
 	int lower_limit = mid_frequency - 50;
 	int upper_limit = lower_limit + 100;
 	char *pend;
-	int repeat[101] = {0};
-	char n = 0;
+	int sum = 0;
+	int n = 0;
 
   /* USER CODE END 1 */
 
@@ -126,12 +126,12 @@ int main(void)
 	  printf("\tUpperLimit Frequency: %d\n\r", upper_limit);
 	  printf("Is this okay?: \n");
 	  get_line(buffer, MAX_SIZE);
-	  printf("This is the buffer: %s\n\r", buffer);
+	  printf("%s\n\r", buffer);
 
 	  if(strchr(buffer, 'n') || strchr(buffer, 'N') || strchr(buffer, 'No') || strchr(buffer, 'no'))
 	  {
 		  memset(buffer, 0, sizeof(buffer));
-		  printf("Please specify a new lower limit: \n\r");
+		  printf("Please specify a new lower limit (in Hz): \n\r");
 		  get_line(buffer, MAX_SIZE);
 		  //HAL_Delay(500);
 
@@ -145,7 +145,12 @@ int main(void)
 		  printf("\n\r");
 	  }
 
-	  printf("Measuring...");
+	  for(int i = 0; i <= sizeof(buckets); i++)
+	  {
+		  buckets[i][0] = lower_limit + i;
+	  }
+
+	  printf("Measuring...\n\r");
 	  while(n <= 1000)
 	  {
 		  if(int_flg)
@@ -159,15 +164,21 @@ int main(void)
 		  }
 	  }
 
-	  measurement_manager(repeat);
+	  measurement_manager();
 
 	  printf("Measuring complete, displaying results: \n\r");
 
-	  for(int i = 0; i <sizeof(repeat); i++)
+	  for(int i = 0; i <sizeof(buckets); i++)
 	  {
-		  if(repeat[i] != 0)
+		  if(buckets[i][1] != 0)
 		  {
-			  printf("%d: \t%d\n\r", measurements[i], repeat[i]);
+			  printf("%d: \t%d\n\r", buckets[i][0], buckets[i][1]);
+			  sum += buckets[i][1];
+		  }
+		  if(sum < 1000)
+		  {
+			  int missing = 1000 - sum;
+			  printf("There are %d values measured outside of the limits.", missing);
 		  }
 	  }
 
@@ -365,28 +376,22 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 _Bool power_on_self_test(void)
 {
+	printf("Checking Power On State...\n\r");
 	HAL_Delay(2000);
 	if(frequency == 0)
 	{
-		printf("POST Failed. Please connect a signal and try again.");
+		printf("POST Failed. Please connect a signal and try again.\n\r");
 		return 1;
 	}
 
-	printf("POST  Passed");
+	printf("POST  Passed. Beginning the Program!\n\n\r");
 	memset(measurements, 0, sizeof(measurements));
 	return 0;
 }
 
-void measurement_manager(int *freq)
+void measurement_manager(void)
 {
-	for(int i = 0; i < sizeof(measurements); i++)
-	    {
-	        /* Initially initialize frequencies to -1 */
-	        freq[i] = -1;
-	    }
-
-
-	    for(int i = 0; i < sizeof(measurements); i++)
+	    for(int i = 2; i < sizeof(measurements); i++)
 	    {
 	        int count = 1;
 	        for(int j = i + 1; j < sizeof(measurements); j++)
@@ -395,17 +400,17 @@ void measurement_manager(int *freq)
 	            if(measurements[i]==measurements[j])
 	            {
 	                count++;
-
-	                /* Make sure not to count frequency of same element again */
-	                freq[j] = 0;
 	            }
 	        }
 
-	        /* If frequency of current element is not counted */
-	        if(freq[i] != 0)
+	        for(int k = 0; k = sizeof(buckets); k++)
 	        {
-	            freq[i] = count;
+	        	if(buckets[k][1] != 0 && measurements[i] == buckets[k][0])
+	        	{
+	        		buckets[k][1] = count;
+	            }
 	        }
+	        /* If frequency of current element is not counted */
 	    }
 }
 
@@ -454,6 +459,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+	  printf("ERROR: Interrupt Not Working. Please Restart Program.\n\r");
   }
   /* USER CODE END Error_Handler_Debug */
 }
