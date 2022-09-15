@@ -35,6 +35,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define MAX_SIZE 50
+#define CLK 80000000
+#define PRESCALAR 80
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,16 +50,14 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint8_t buffer[20] = {0};	     // holds the user response
+uint32_t buffer[20] = {0};	     // holds the user response
 int measurements[1000] = {0};
-int buckets[2][101] = {0};
-int meas_index = 0;
 
-uint8_t ic_val_1 = 0;
-uint8_t ic_val_2 = 0;
-uint8_t diff = 0;
+uint32_t ic_val_1 = 0;
+uint32_t ic_val_2 = 0;
 int first_flg = 0;
-int full_flg = 0;
+int int_flg = 0;
+float frequency = 0;
 
 /* USER CODE END PV */
 
@@ -85,8 +85,9 @@ int main(void)
 	int mid_frequency = 1000;
 	int lower_limit = mid_frequency - 50;
 	int upper_limit = lower_limit + 100;
-
 	char *pend;
+	int repeat[101] = {0};
+	char n = 0;
 
   /* USER CODE END 1 */
 
@@ -110,7 +111,6 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-
   HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1); // Starts timer 2 in input capture mode
   /* USER CODE END 2 */
 
@@ -145,25 +145,29 @@ int main(void)
 		  printf("\n\r");
 	  }
 
-	  for(int i = 0; i <= sizeof(buckets); i++)
+	  printf("Measuring...");
+	  while(n <= 1000)
 	  {
-		  buckets[0][i] = lower_limit + i;
+		  if(int_flg)
+		  {
+			  int delta = frequency - mid_frequency;
+			  int nfreq = mid_frequency + delta;
+			  measurements[n] = nfreq;
+			  n++;
+			  int_flg = 0;
+
+		  }
 	  }
 
-	  while(full_flg == 0)
-	  {
-		  printf("Measuring...\n\r");
-	  }
-
-	  measurement_manager();
+	  measurement_manager(repeat);
 
 	  printf("Measuring complete, displaying results: \n\r");
 
-	  for(int i = 0; i <sizeof(buckets); i++)
+	  for(int i = 0; i <sizeof(repeat); i++)
 	  {
-		  if(buckets[1][i] != 0)
+		  if(repeat[i] != 0)
 		  {
-			  printf("%d: \t%d\n\r", buckets[0][i], buckets[1][i]);
+			  printf("%d: \t%d\n\r", measurements[i], repeat[i]);
 		  }
 	  }
 
@@ -179,6 +183,7 @@ int main(void)
 
 
   }
+  main();
   /* USER CODE END 3 */
 }
 
@@ -358,35 +363,56 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-int power_on_self_test(void)
+_Bool power_on_self_test(void)
 {
-	HAL_Delay(500);
-	if(measurements != 0)
+	HAL_Delay(2000);
+	if(frequency == 0)
 	{
-		//memset(measurements, 0, MAX_SIZE);
-		return 0;
+		printf("POST Failed. Please connect a signal and try again.");
+		return 1;
 	}
-	return 1;
+
+	printf("POST  Passed");
+	memset(measurements, 0, sizeof(measurements));
+	return 0;
 }
 
-void measurement_manager()
+void measurement_manager(int *freq)
 {
-	for(int i = 0; i <= sizeof(measurements); i++)
-	{
-		for(int j = 0; j <= sizeof(buckets); j++)
-		{
-			int count = 0;
-			if(measurements[i] == buckets[0][j])
-			{
-				count++;
-				buckets[1][i] = count;
-			}
-		}
-	}
+	for(int i = 0; i < sizeof(measurements); i++)
+	    {
+	        /* Initially initialize frequencies to -1 */
+	        freq[i] = -1;
+	    }
+
+
+	    for(int i = 0; i < sizeof(measurements); i++)
+	    {
+	        int count = 1;
+	        for(int j = i + 1; j < sizeof(measurements); j++)
+	        {
+	            /* If duplicate element is found */
+	            if(measurements[i]==measurements[j])
+	            {
+	                count++;
+
+	                /* Make sure not to count frequency of same element again */
+	                freq[j] = 0;
+	            }
+	        }
+
+	        /* If frequency of current element is not counted */
+	        if(freq[i] != 0)
+	        {
+	            freq[i] = count;
+	        }
+	    }
 }
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
+	int diff = 0;
+
 	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
 	{
 		if(first_flg == 0)
@@ -400,20 +426,18 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 
 			if(ic_val_2 > ic_val_1)
 			{
-				measurements[meas_index] = ic_val_2 - ic_val_1;
-				meas_index += 1;
+				diff = ic_val_2 - ic_val_1;
 			}
 			else if(ic_val_1 > ic_val_2)
 			{
-				measurements[meas_index] = (0xffff - ic_val_1) + ic_val_2;
-				meas_index += 1;
+				diff = (0xffffffff - ic_val_1) + ic_val_2;
 			}
+
+			float refclk = CLK/PRESCALAR;
+			frequency = refclk/diff;
+			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
 			first_flg = 0; // reset the first value flag
-			if (meas_index == 1000)
-			{
-				HAL_TIM_IC_Stop_IT(htim, TIM_CHANNEL_1);
-				full_flg = 1;
-			}
+			int_flg = 1;
 		}
 	}
 }
