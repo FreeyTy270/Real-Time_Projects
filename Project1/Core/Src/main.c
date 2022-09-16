@@ -56,7 +56,7 @@ uint32_t ic_val_1 = 0;
 uint32_t ic_val_2 = 0;
 int first_flg = 0;
 _Bool int_flg = 0;
-float frequency = 0;
+int frequency = 0;
 
 /* USER CODE END PV */
 
@@ -86,8 +86,8 @@ int main(void)
 	int upper_limit = lower_limit + 100;
 	char *pend;
 	int sum = 0;
-	int n = 0;
 
+	memset(buckets, 0, 202);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -136,14 +136,14 @@ int main(void)
 		  mid_frequency = strtol(buffer, &pend, 10);
 		  lower_limit = mid_frequency - 50;
 		  upper_limit = mid_frequency + 50;
-		  printf("This is the middle frequency: %d\n\r", mid_frequency);
 		  printf("\tLowerLimit Frequency: %d\n\r", lower_limit);
+		  printf("This is the middle frequency: %d\n\r", mid_frequency);
 		  printf("\tUpperLimit Frequency: %d\n\r", upper_limit);
 
 		  printf("\n\r");
 	  }
 
-	  for(int i = 0; i <= (upper_limit - lower_limit); i++)
+	  for(int i = 0; i <= 100; i++)
 	  {
 		  buckets[i][0] = lower_limit + i;
 		  buckets[i][1] = 0;
@@ -151,36 +151,39 @@ int main(void)
 
 	  printf("\n\rMeasuring...\n\r");
 
-	  int count = 0;
-	  while(n <= 1000)
+	  int diff = 0;
+	  int n = 0;
+
+	  do
 	  {
-		  int diff = 0;
 		  if(int_flg)
 		  {
 			  if(frequency >= lower_limit && frequency <= upper_limit)
 			  {
 				  diff = frequency - lower_limit;
-				  count++;
-				  buckets[diff][1] = count;
+				  buckets[diff][1] += 1;
 				  n++;
 			  }
+
 		  }
-	  }
+	  }while(n < 1000);
 
 	  printf("Measuring complete, displaying results: \n\r");
 
-	  for(int i = 0; i <= sizeof(buckets); i++)
+	  for(int i = 0; i <= 100; i++)
 	  {
 		  if(buckets[i][1] != 0)
 		  {
 			  printf("%d: \t%d\n\r", buckets[i][0], buckets[i][1]);
 			  sum += buckets[i][1];
 		  }
-		  if(sum < 1000)
-		  {
-			  int missing = 1000 - sum;
-			  printf("There are %d values measured outside of the limits.", missing);
-		  }
+	  }
+
+
+	  if(sum < 1000)
+	  {
+		  int missing = 1000 - sum;
+		  printf("There are %d values measured outside of the limits.", missing);
 	  }
 
 	  printf("Play again?\n\r");
@@ -413,7 +416,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 				diff = (0xffffffff - ic_val_1) + ic_val_2;
 			}
 
-			float refclk = CLK/PRESCALAR;
+			float refclk = CLK/(PRESCALAR);
 			frequency = refclk/diff;
 			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
 			first_flg = 0; // reset the first value flag
