@@ -51,7 +51,6 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint32_t buffer[20] = {0};	     // holds the user response
-int measurements[1002] = {0};
 int buckets[101][2] = {0};
 uint32_t ic_val_1 = 0;
 uint32_t ic_val_2 = 0;
@@ -126,7 +125,6 @@ int main(void)
 	  printf("\tUpperLimit Frequency: %d\n\r", upper_limit);
 	  printf("Is this okay?: \n");
 	  get_line(buffer, MAX_SIZE);
-	  printf("%s\n\r", buffer);
 
 	  if(strchr(buffer, 'n') || strchr(buffer, 'N') || strchr(buffer, 'No') || strchr(buffer, 'no'))
 	  {
@@ -137,7 +135,7 @@ int main(void)
 
 		  mid_frequency = strtol(buffer, &pend, 10);
 		  lower_limit = mid_frequency - 50;
-		  upper_limit = lower_limit + 100;
+		  upper_limit = mid_frequency + 50;
 		  printf("This is the middle frequency: %d\n\r", mid_frequency);
 		  printf("\tLowerLimit Frequency: %d\n\r", lower_limit);
 		  printf("\tUpperLimit Frequency: %d\n\r", upper_limit);
@@ -145,30 +143,33 @@ int main(void)
 		  printf("\n\r");
 	  }
 
-	  for(int i = 0; i <= sizeof(buckets); i++)
+	  for(int i = 0; i <= (upper_limit - lower_limit); i++)
 	  {
 		  buckets[i][0] = lower_limit + i;
+		  buckets[i][1] = 0;
 	  }
 
-	  printf("Measuring...\n\r");
+	  printf("\n\rMeasuring...\n\r");
+
+	  int count = 0;
 	  while(n <= 1000)
 	  {
+		  int diff = 0;
 		  if(int_flg)
 		  {
-			  int delta = frequency - mid_frequency;
-			  int nfreq = mid_frequency + delta;
-			  measurements[n] = nfreq;
-			  n++;
-			  int_flg = 0;
-
+			  if(frequency >= lower_limit && frequency <= upper_limit)
+			  {
+				  diff = frequency - lower_limit;
+				  count++;
+				  buckets[diff][1] = count;
+				  n++;
+			  }
 		  }
 	  }
 
-	  measurement_manager();
-
 	  printf("Measuring complete, displaying results: \n\r");
 
-	  for(int i = 0; i <sizeof(buckets); i++)
+	  for(int i = 0; i <= sizeof(buckets); i++)
 	  {
 		  if(buckets[i][1] != 0)
 		  {
@@ -385,33 +386,7 @@ _Bool power_on_self_test(void)
 	}
 
 	printf("POST  Passed. Beginning the Program!\n\n\r");
-	memset(measurements, 0, sizeof(measurements));
 	return 0;
-}
-
-void measurement_manager(void)
-{
-	    for(int i = 2; i < sizeof(measurements); i++)
-	    {
-	        int count = 1;
-	        for(int j = i + 1; j < sizeof(measurements); j++)
-	        {
-	            /* If duplicate element is found */
-	            if(measurements[i]==measurements[j])
-	            {
-	                count++;
-	            }
-	        }
-
-	        for(int k = 0; k = sizeof(buckets); k++)
-	        {
-	        	if(buckets[k][1] != 0 && measurements[i] == buckets[k][0])
-	        	{
-	        		buckets[k][1] = count;
-	            }
-	        }
-	        /* If frequency of current element is not counted */
-	    }
 }
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)

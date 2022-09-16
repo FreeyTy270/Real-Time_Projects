@@ -54,7 +54,6 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 _Bool power_on_self_test(void);
-void measurement_manager(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
