@@ -165,6 +165,8 @@ int main(void)
 				  n++;
 			  }
 
+			  int_flg = 0;
+
 		  }
 	  }while(n < 1000);
 
