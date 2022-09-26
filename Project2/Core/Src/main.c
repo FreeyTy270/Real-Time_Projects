@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,6 +61,24 @@ static void MX_TIM2_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+#define RXBUF_SIZE 10
+#define MAIN_BUF_SIZE 20
+
+uint8_t rxbuf[RXBUF_SIZE];
+uint8_t mainbuf[MAIN_BUF_SIZE];
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypDef *huart, uint16_t size)
+{
+	if (huart->Instance == USART2)
+	{
+		memcpy(mainbuf, rxbuf, size);
+		HAL_UART_ReceiveToIdle_DMA(&huart2, rxbuf, RXBUF_SIZE);
+		_HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
+
+
+	}
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -96,6 +114,8 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_UART_ReceiveToIdle_DMA(&huart2, rxbuf, RXBUF_SIZE);
+  _HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
   /* USER CODE END 2 */
 
   /* Infinite loop */
