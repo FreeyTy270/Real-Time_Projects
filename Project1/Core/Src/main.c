@@ -120,7 +120,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  printf("\n\rWelcome to the Internet\n\r\tLowerLimit Frequency: %d\n\r", lower_limit);
+	  printf("\n\rDisplaying Current Spectrum Bounds: \n\r\tLowerLimit Frequency: %d\n\r", lower_limit);
 	  printf("\tInitial Midpoint Frequency: %d\n\r", mid_frequency);
 	  printf("\tUpperLimit Frequency: %d\n\r", upper_limit);
 	  printf("Is this okay?: \n");
