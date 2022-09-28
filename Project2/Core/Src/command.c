@@ -13,8 +13,7 @@ uint8_t Fetch_Op(uint8_t command)
 {
 	switch command
 	{
-	case MOV:
-	case
+
 
 	}
 
