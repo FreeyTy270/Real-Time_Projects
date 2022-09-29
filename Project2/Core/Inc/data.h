@@ -28,18 +28,6 @@ enum status
 	status_nested_error
 }status;
 
-enum servo_states
-{
-	pos1,
-	pos2,
-	pos3,
-	pos4,
-	pos5,
-	unknown,
-	moving,
-	recipe_ended
-}state;
-
 enum events
 {
 	cont,

@@ -108,7 +108,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  run_program();
+	  execute();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
