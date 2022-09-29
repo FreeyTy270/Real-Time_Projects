@@ -13,8 +13,8 @@
 
 typedef struct current_state
 {
-	int servo1 = unknown;
-	int servo2 = unknown;
+	servo_state servo1 = unknown;
+	servo_state servo2 = unknown;
 }current_state_t;
 
 typedef enum
@@ -38,7 +38,8 @@ int get_instruction(unsigned char *recipe);
 /* Action Functions */
 void execute(); // The top of the program
 void startup(); // Initializes all data structures and prepares device
-void transition_state(); // Points next instruction to the correct state
+void chk_state(); // Points next instruction to the correct state
+
 
 
 

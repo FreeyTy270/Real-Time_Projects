@@ -32,15 +32,35 @@
 
 
 /* Variables */
-extern int __io_putchar(int ch) __attribute__((weak));
-extern int __io_getchar(void) __attribute__((weak));
+int __io_putchar(int ch);
+int __io_getchar(void);
 
 
 char *__env[1] = { 0 };
 char **environ = __env;
 
+extern UART_HandleTypeDef huart2;
 
 /* Functions */
+
+int __io_putchar(int ch)
+{
+	HAL_UART_Transmit(&huart2, (uint8_t *) &ch, sizeof(ch), HAL_MAX_DELAY);
+	return ch;
+}
+
+int __io_getchar()
+{
+	uint8_t ch = 0;
+
+	__HAL_UART_CLEAR_OREFLAG(&huart2);
+
+	HAL_UART_Receive(&huart2, (uint8_t *) &ch, sizeof(ch), HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2, (uint8_t *) &ch, sizeof(ch), HAL_MAX_DELAY);
+	return ch;
+}
+
+
 void initialise_monitor_handles()
 {
 }
@@ -62,7 +82,7 @@ void _exit (int status)
 	while (1) {}		/* Make sure we hang here */
 }
 
-__attribute__((weak)) int _read(int file, char *ptr, int len)
+int _read(int file, char *ptr, int len)
 {
 	int DataIdx;
 
@@ -74,7 +94,7 @@ __attribute__((weak)) int _read(int file, char *ptr, int len)
 return len;
 }
 
-__attribute__((weak)) int _write(int file, char *ptr, int len)
+int _write(int file, char *ptr, int len)
 {
 	int DataIdx;
 

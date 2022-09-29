@@ -10,7 +10,7 @@
 #ifndef INC_SERVO_H_
 #define INC_SERVO_H_
 
-int get_mov_delay(current_state_t now, int newpos);
-void move_servo(current_state_t now, int newpos);
+int get_mov_delay(current_state_t now, int serv, servo_state newpos);
+void move_servo(int serv, position newpos);
 
 #endif /* INC_SERVO_H_ */

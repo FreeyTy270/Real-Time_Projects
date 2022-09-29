@@ -6,7 +6,11 @@
  */
 
 #include "fsm.h"
+#include "uart.h"
 #include "data.h"
+#include "servo.h"
+
+current_state_t servos_now;
 
 
 void execute()
@@ -17,7 +21,10 @@ void execute()
 
 void startup()
 {
-
+	Buf_Init();
+	set_states(servos_now, moving, moving);
+	move_servo(1, pos1);
+	move_servo(2, pos1);
 }
 
 current_state_t get_state()
@@ -26,7 +33,22 @@ current_state_t get_state()
 	return now;
 }
 
-void set_state(current_state_t new, int serv, int new_state)
+void chk_state()
+
+void set_states(current_state_t *new, int new_state1, int new_state2)
 {
-	new.serv = new_state;
+	set_state(new, 1, new_state1);
+	set_state(new, 2, new_state2);
+}
+
+void set_state(current_state_t *new, int serv, int new_state)
+{
+	if (serv == 1)
+	{
+		new->servo1 = new_state;
+	}
+	else if(serv == 2)
+	{
+		new->servo2 = new_state;
+	}
 }
