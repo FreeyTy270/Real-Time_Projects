@@ -5,28 +5,43 @@
  *      Author: Ty Freeman
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include "fsm.h"
 #include "uart.h"
 #include "data.h"
 #include "servo.h"
 
-current_state_t servos_now;
 
+current_state_t servos_now;
+dev_t dev;
+
+int serv_delay [2];
 
 void execute()
 {
 	startup();
+	fetch_inst();
+	hold();
 
 }
 
 void startup()
 {
 	Buf_Init();
-	set_states(servos_now, moving, moving);
-	move_servo(1, pos1);
-	move_servo(2, pos1);
+	set_states(servos_now, serv_moving, serv_moving);
+	serv_delay[0] = get_mov_delay(servos_now, servo1, serv_pos1);
+	serv_delay[1] = get_mov_delay(servos_now, servo2, serv_pos1);
+	move_servo(1, serv_pos1);
+	move_servo(2, serv_pos1);
+	HAL_Delay(max(serv_delay));
+	set_states(servos_now, serv_pos1, serv_pos1);
 }
 
+void fetch_inst()
+{
+
+}
 current_state_t get_state()
 {
 	current_state_t now;

@@ -19,13 +19,13 @@ typedef struct current_state
 
 typedef enum
 {
-	pos1,
-	pos2,
-	pos3,
-	pos4,
-	pos5,
-	unknown,
-	moving,
+	serv_pos1,
+	serv_pos2,
+	serv_pos3,
+	serv_pos4,
+	serv_pos5,
+	serv_unknown,
+	serv_moving,
 	recipe_ended
 }servo_state;
 

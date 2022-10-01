@@ -20,6 +20,12 @@ unsigned char recipe2[] = {MOV | 5, MOV | 2, RECIPE_END};
 
 unsigned char *recipes[] = {recipe1, recipe2, NULL};
 
+enum devices
+{
+	servo1,
+	servo2
+};
+
 enum status
 {
 	status_running,
