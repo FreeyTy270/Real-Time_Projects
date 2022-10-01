@@ -10,13 +10,6 @@
 #ifndef INC_FSM_H_
 #define INC_FSM_H_
 
-
-typedef struct current_state
-{
-	servo_state servo1 = unknown;
-	servo_state servo2 = unknown;
-}current_state_t;
-
 typedef enum
 {
 	serv_pos1,

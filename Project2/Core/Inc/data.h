@@ -10,21 +10,37 @@
 #ifndef INC_DATA_H_
 #define INC_DATA_H_
 
-#define MOV  001
-#define LOOP 100
-#define WAIT 010
-#define END  000
+#define MOV  	  	0x10
+#define LOOP 	  	0x80
+#define WAIT 	  	0x20
+#define END_LOOP  	0x30
+#define END_RECIPE	0x00
 
 unsigned char recipe1[] = {MOV + 3, MOV | 5, RECIPE_END};
 unsigned char recipe2[] = {MOV | 5, MOV | 2, RECIPE_END};
 
 unsigned char *recipes[] = {recipe1, recipe2, NULL};
 
-enum devices
+typedef struct servo
 {
-	servo1,
-	servo2
-};
+	int dev;
+	servo_state position;
+	unsigned char *recipe;
+	int recipe_index;
+}servo_t;
+
+typedef struct system_state
+{
+	servo_t *servo1;
+	servo_t *servo2;
+
+}system_state_t;
+
+typedef struct opcode
+{
+	int operation : 3;
+	int data : 5;
+}opcode_t;
 
 enum status
 {
