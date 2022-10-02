@@ -21,26 +21,22 @@ unsigned char recipe2[] = {MOV | 5, MOV | 2, RECIPE_END};
 
 unsigned char *recipes[] = {recipe1, recipe2, NULL};
 
+typedef struct opcode
+{
+	int operation : 3;
+	int data : 5;
+}opcode_t;
+
 typedef struct servo
 {
 	int dev;
 	servo_state position;
 	unsigned char *recipe;
 	int recipe_index;
+	opcode_t old_com;
+	opcode_t new_com;
+	_Bool loop_flg = 0;
 }servo_t;
-
-typedef struct system_state
-{
-	servo_t *servo1;
-	servo_t *servo2;
-
-}system_state_t;
-
-typedef struct opcode
-{
-	int operation : 3;
-	int data : 5;
-}opcode_t;
 
 enum status
 {

@@ -25,8 +25,9 @@ void execute()
 	opcode_t com;
 
 	startup(&sys);
-	fetch_inst(&sys, com);
-	run_inst(&sys, com);
+	fetch_inst(&sys.servo1);
+	fetch_inst(&sys.servo2);
+	run_inst(&sys);
 	hold();
 
 }
@@ -45,14 +46,29 @@ void startup(system_state_t *now)
 	set_states(now, serv_pos1, serv_pos1);
 }
 
-void run_inst(system_state_t *system, opcode_t *command)
+void fetch_next(system_state_t *system)
 {
-	switch(command->operation)
+	static int serv1_repeat = 0;
+	static int serv2_repeat = 0;
+	system->servo1->old_com = system->servo1->new_com;
+	system->servo2->old_com = system->servo2->new_com;
+
+	system->servo1->new_com = read_recipe(system->servo1->recipe, system->servo1->recipe_index);
+	system->servo2->new_com = read_recipe(system->servo2->recipe, system->servo2->recipe_index);
+
+	serv1_repeat = chk_loop(system->servo1);
+	serv2_repeat = chk_loop(system->servo2);
+
+	if(serv1_repeat > 0 || serv2_repeat > 0)
 	{
-	case MOV:
-		set_state(system->servo1, serv_moving);
 
 	}
+}
+
+void run_next(system_state_t *system)
+{
+	run_inst(system->servo1);
+	run_inst(system->servo2);
 }
 
 void set_states(system_state_t *new, int new_state1, int new_state2)
