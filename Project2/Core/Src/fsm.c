@@ -36,17 +36,18 @@ typedef struct system_state
 
 }system_state_t;
 
-void execute(int flg)
+void execute(_Bool *flg)
 {
 	int resp = 0;
-	servo_t servo1 = {1, serv_unknown, recipes[0]};
-	servo_t servo2 = {2, serv_unknown, recipes[1]};
+
+	static servo_t servo1 = {1, serv_unknown};
+	static servo_t servo2 = {2, serv_unknown};
 	system_state_t sys = {&servo1, &servo2};
 
-	if(!flg)
+	if(!*flg)
 	{
 		startup(&sys);
-		flg = 1;
+		*flg = 1;
 	}
 	resp = chk_states(&sys);
 	fetch_next_sys(&sys, resp);
@@ -60,11 +61,11 @@ void startup(system_state_t *now)
 	now->servo1->recipe = recipes[0];
 	now->servo2->recipe = recipes[1];
 	set_states(now, serv_moving, serv_moving);
-	servo_delay[0] = get_mov_delay((now->servo1->position - serv_pos1));
-	servo_delay[1] = get_mov_delay((now->servo2->position - serv_pos1));
+	servo_delay[0] = get_mov_delay((serv_pos5 - serv_pos1));
+	servo_delay[1] = get_mov_delay((serv_pos5 - serv_pos1));
 	move_servo(now->servo1->dev, serv_pos1);
 	move_servo(now->servo1->dev, serv_pos1);
-	HAL_Delay(max(servo_delay[0], servo_delay[1]));
+	//HAL_Delay(max(servo_delay[0], servo_delay[1]));
 	set_states(now, serv_pos1, serv_pos1);
 }
 
@@ -92,7 +93,7 @@ void hold(servo_t *servo)
 {
 	servo->old_com = servo->new_com;
 
-	servo->new_com.operation = WAIT;
+	servo->new_com.operation = END_RECIPE;
 	servo->new_com.data = 0;
 }
 
@@ -108,6 +109,7 @@ void fetch_next(servo_t *servo)
 			case 0:
 				servo->old_com = servo->new_com;
 				servo->new_com = read_recipe(servo->recipe, servo->recipe_index);
+				servo->recipe_index++;
 				break;
 			case 1:
 				servo->loop_flg = 0;
@@ -137,7 +139,27 @@ void run_next(system_state_t *system)
 	chk_delay(system->servo1, servo_delay[0]);
 	chk_delay(system->servo2, servo_delay[1]);
 
-	HAL_Delay(100 + max(servo_delay[0], servo_delay[1]));
+	if(servo_delay[0] > 31)
+	{
+		//HAL_Delay(100 + servo_delay[1]);
+	}
+	else if(servo_delay[1] > 31)
+	{
+		//HAL_Delay(100 + servo_delay[0]);
+	}
+	else if(servo_delay[0] > 31 && servo_delay[1] > 31)
+	{
+		//HAL_Delay(100);
+	}
+	else
+	{
+		//HAL_Delay(100 + max(servo_delay[0], servo_delay[1]));
+	}
+	int n = 0;
+	while(n < (100 + max(servo_delay[0], servo_delay[1])))
+	{
+		n++;
+	}
 }
 
 void chk_delay(servo_t *servo, const int delay)
@@ -216,7 +238,7 @@ void set_state(servo_t *serv, int new_state)
 	serv->position = new_state;
 }
 
-uint8_t max(uint8_t num1, uint8_t num2)
+int max(int num1, int num2)
 {
 	int n = ((num1-num2) > 0) ? num1 : num2;
 	return n;
