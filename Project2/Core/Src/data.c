@@ -1,13 +1,18 @@
 /*
- * command.c
+ * data.c
  *
- *  Created on: Sep 26, 2022
+ *  Created on: Oct 3, 2022
  *      Author: Ty Freeman
  */
 
-#include "command.h"
+#include "data.h"
 #include "servo.h"
 #include "stm32l4xx.h"
+
+uint8_t recipe1[] = {MOV + 3, MOV | 5, END_RECIPE};
+uint8_t recipe2[] = {MOV | 5, MOV | 2, END_RECIPE};
+
+uint8_t *recipes[] = {recipe1, recipe2};
 
 opcode_t read_recipe(const uint8_t *recipe, int index)
 {

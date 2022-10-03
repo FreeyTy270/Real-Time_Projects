@@ -4,7 +4,8 @@
  *  Created on: Sep 28, 2022
  *      Author: Ty Freeman
  *
- *      Define and create all global data variables, structures, and types
+ *      Declare and create all global data variables, structures, and types. Also holds declarations for
+ *      functions holding command control logic.
  */
 
 #ifndef INC_DATA_H_
@@ -17,11 +18,6 @@
 #define WAIT 	  	0x20
 #define END_LOOP  	0x30
 #define END_RECIPE	0x00
-
-uint8_t recipe1[] = {MOV + 3, MOV | 5, END_RECIPE};
-uint8_t recipe2[] = {MOV | 5, MOV | 2, END_RECIPE};
-
-uint8_t *recipes[] = {recipe1, recipe2};
 
 typedef struct opcode
 {
@@ -45,4 +41,11 @@ enum events
 	stop,
 	recipe_end
 };
+
+opcode_t read_recipe(const unsigned char *recipe, int index);
+int chk_loop(int repeat);
+int run_inst(int dev, int position, opcode_t com);
+
+
+
 #endif /* INC_DATA_H_ */

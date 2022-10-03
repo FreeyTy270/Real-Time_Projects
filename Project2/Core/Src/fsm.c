@@ -8,15 +8,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "fsm.h"
+#include "data.h"
 #include "uart.h"
 #include "servo.h"
-#include "command.h"
 #include "stm32l4xx.h"
 
 int servo_delay [2];
 
+extern uint8_t *recipes[];
+extern uint8_t recipe1[], recipe2[];
+
+typedef struct servo
+{
+	int dev;
+	int position;
+	uint8_t *recipe;
+	int recipe_index;
+	opcode_t old_com;
+	opcode_t new_com;
+	int loop_flg : 3;
+}servo_t;
+
+typedef struct system_state
+{
+	servo_t *servo1;
+	servo_t *servo2;
+
+}system_state_t;
+
 void execute(int flg)
 {
+	int resp = 0;
 	servo_t servo1 = {1, serv_unknown, recipes[0]};
 	servo_t servo2 = {2, serv_unknown, recipes[1]};
 	system_state_t sys = {&servo1, &servo2};
@@ -26,7 +48,8 @@ void execute(int flg)
 		startup(&sys);
 		flg = 1;
 	}
-	fetch_next_sys(&sys);
+	resp = chk_states(&sys);
+	fetch_next_sys(&sys, resp);
 	run_next(&sys);
 
 }
@@ -45,10 +68,32 @@ void startup(system_state_t *now)
 	set_states(now, serv_pos1, serv_pos1);
 }
 
-void fetch_next_sys(system_state_t *system)
+void fetch_next_sys(system_state_t *system, int flg)
 {
-	fetch_next(system->servo1);
-	fetch_next(system->servo2);
+	switch(flg)
+	{
+	case 1:
+		hold(system->servo1);
+		break;
+	case 2:
+		hold(system->servo2);
+		break;
+	case 3:
+		hold(system->servo1);
+		hold(system->servo2);
+		break;
+	default:
+		fetch_next(system->servo1);
+		fetch_next(system->servo2);
+	}
+}
+
+void hold(servo_t *servo)
+{
+	servo->old_com = servo->new_com;
+
+	servo->new_com.operation = WAIT;
+	servo->new_com.data = 0;
 }
 
 void fetch_next(servo_t *servo)
@@ -89,20 +134,75 @@ void run_next(system_state_t *system)
 	servo_delay[0] = run_inst(system->servo1->dev, system->servo1->position, system->servo1->new_com);
 	servo_delay[1] = run_inst(system->servo2->dev, system->servo2->position, system->servo2->new_com);
 
-	if(servo_delay[0] > 31)
-	{
-		switch(servo_delay[0])
-		{
-		case 32:
-			system->servo1->loop_flg = 1;
-			break;
-		case 33:
-			system->servo1->loop_flg = 2;
-		case 34:
-			system->servo1->position = recipe_ended;
-		}
-	}
+	chk_delay(system->servo1, servo_delay[0]);
+	chk_delay(system->servo2, servo_delay[1]);
+
 	HAL_Delay(100 + max(servo_delay[0], servo_delay[1]));
+}
+
+void chk_delay(servo_t *servo, const int delay)
+{
+	if(delay > 31)
+		{
+			switch(delay)
+			{
+			case 32:
+				servo->loop_flg = 1;
+				break;
+			case 33:
+				servo->loop_flg = 2;
+				break;
+			case 34:
+				set_state(servo, recipe_ended);
+				break;
+			case 35:
+				set_state(servo, serv_unknown);
+				break;
+			default:
+				set_state(servo, serv_moving);
+			}
+		}
+}
+
+int chk_states(system_state_t *system)
+{
+
+	int servo1_resp = 0;
+	int servo2_resp = 0;
+
+	if(chk_state(system->servo1) > 0)
+	{
+		servo1_resp = 1;
+	}
+	if(chk_state(system->servo2) > 0)
+	{
+		servo2_resp = 2;
+	}
+
+	return servo1_resp + servo2_resp;
+}
+
+int chk_state(servo_t *servo)
+{
+	_Bool response = 0;
+
+	switch(servo->position)
+	{
+	case serv_moving:
+		servo->position = servo->new_com.data;
+		response = 0;
+		break;
+	case recipe_ended:
+		response = 1;
+		break;
+	case serv_unknown:
+		response = 1;
+		break;
+	default:
+		response = 0;
+	}
+
+	return response;
 }
 
 void set_states(system_state_t *new, int new_state1, int new_state2)
