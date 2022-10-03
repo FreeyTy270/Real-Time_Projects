@@ -8,7 +8,8 @@
 #ifndef INC_COMMAND_H_
 #define INC_COMMAND_H_
 
-uint8_t Fetch_Op(uint8_t com1, uint8_t com2);
-
+opcode_t read_recipe(const unsigned char *recipe, int index);
+int chk_loop(int repeat);
+int run_inst(int dev, int position, opcode_t com);
 
 #endif /* INC_COMMAND_H_ */

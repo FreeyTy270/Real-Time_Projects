@@ -7,13 +7,11 @@
 
 
 #include "servo.h"
-#include "data.h"
+#include "stm32l4xx.h"
 
 #define MOV_TIME 75
 
 extern TIM_HandleTypeDef htim2;
-
-static const position[] = {50, 63, 75, 88, 100};
 
 int get_mov_delay(int distance)
 {

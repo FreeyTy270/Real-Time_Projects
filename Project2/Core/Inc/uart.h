@@ -11,6 +11,4 @@
 /* Initializes used buffers to zero and also initializes the DMA */
 void Buf_Init(void);
 
-uint8_t Command_Processor(uint8_t command);
-
 #endif /* INC_UART_H_ */

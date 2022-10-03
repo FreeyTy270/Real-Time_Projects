@@ -23,7 +23,6 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include "uart.h"
-#include "data.h"
 #include "fsm.h"
 /* USER CODE END Includes */
 
@@ -105,10 +104,12 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int flg = 0;
+
   while (1)
   {
     /* USER CODE END WHILE */
-	  execute();
+	  execute(flg);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

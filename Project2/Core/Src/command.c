@@ -5,41 +5,66 @@
  *      Author: Ty Freeman
  */
 
-#include "data.h"
 #include "command.h"
+#include "servo.h"
 #include "stm32l4xx.h"
 
-opcode_t read_recipe(const unsigned char *recipe, int index)
+opcode_t read_recipe(const uint8_t *recipe, int index)
 {
 	opcode_t command;
 
-	command.operation = recipe[index] & 0xE0;
+	command.operation = recipe[index] & 0x18;
 	command.data = recipe[index] & 0x1F;
 
 	return command;
 
 }
 
-int chk_loop(servo_t *servo)
+int chk_loop(int repeat)
 {
-	if(servo->loop_flg)
+	static _Bool first_flg = 1;
+	static int nrepeat = 0;
+
+	if(first_flg)
 	{
-		servo->new_com == servo->old_com;
+		first_flg = 0;
+		nrepeat = repeat;
 	}
+	else
+	{
+		nrepeat --;
+	}
+
+	return nrepeat;
 }
 
-int run_inst(servo_t *servo)
+int run_inst(int dev, int position, opcode_t com)
 {
-	switch(servo->new_com.operation)
+	int delay = 0;
+	int dist = 0;
+
+	switch(com.operation)
 	{
 	case MOV:
-		move_servo(servo->dev, servo->new_com.data);
+		dist = ((com.data - position) > 0) ? (com.data - position) : (position - com.data);
+		delay = get_mov_delay(dist);
+		move_servo(dev, com.data);
+		break;
+	case WAIT:
+		delay = com.data;
 		break;
 	case LOOP:
-		servo->recipe_index -= 1;
-		return servo->new_com.data;
-	case WAIT:
-
-
+		delay = 32;
+		break;
+	case END_LOOP:
+		delay = 33;
+		break;
+	case END_RECIPE:
+		delay = 34;
+		break;
+	default:
+		delay = 35;
 	}
+
+	return delay;
 }

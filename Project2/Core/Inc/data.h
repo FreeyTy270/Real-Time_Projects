@@ -10,33 +10,24 @@
 #ifndef INC_DATA_H_
 #define INC_DATA_H_
 
+#include <stdint.h>
+
 #define MOV  	  	0x10
 #define LOOP 	  	0x80
 #define WAIT 	  	0x20
 #define END_LOOP  	0x30
 #define END_RECIPE	0x00
 
-unsigned char recipe1[] = {MOV + 3, MOV | 5, RECIPE_END};
-unsigned char recipe2[] = {MOV | 5, MOV | 2, RECIPE_END};
+uint8_t recipe1[] = {MOV + 3, MOV | 5, END_RECIPE};
+uint8_t recipe2[] = {MOV | 5, MOV | 2, END_RECIPE};
 
-unsigned char *recipes[] = {recipe1, recipe2, NULL};
+uint8_t *recipes[] = {recipe1, recipe2};
 
 typedef struct opcode
 {
-	int operation : 3;
-	int data : 5;
+	int operation;
+	int data;
 }opcode_t;
-
-typedef struct servo
-{
-	int dev;
-	servo_state position;
-	unsigned char *recipe;
-	int recipe_index;
-	opcode_t old_com;
-	opcode_t new_com;
-	_Bool loop_flg = 0;
-}servo_t;
 
 enum status
 {
@@ -44,7 +35,7 @@ enum status
 	status_paused,
 	status_command_error,
 	status_nested_error
-}status;
+};
 
 enum events
 {
@@ -53,5 +44,5 @@ enum events
 	left,
 	stop,
 	recipe_end
-}event;
+};
 #endif /* INC_DATA_H_ */

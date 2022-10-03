@@ -5,8 +5,8 @@
  *      Author: Ty Freeman
  */
 
-#include "string.h"
 #include "uart.h"
+#include "string.h"
 #include "stm32l4xx_hal.h"
 
 extern UART_HandleTypeDef huart2;

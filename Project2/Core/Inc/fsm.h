@@ -10,6 +10,18 @@
 #ifndef INC_FSM_H_
 #define INC_FSM_H_
 
+#include "data.h"
+
+typedef struct servo
+{
+	int dev;
+	int position;
+	uint8_t *recipe;
+	int recipe_index;
+	opcode_t old_com;
+	opcode_t new_com;
+	int loop_flg : 3;
+}servo_t;
 
 typedef struct system_state
 {
@@ -18,7 +30,7 @@ typedef struct system_state
 
 }system_state_t;
 
-typedef enum
+enum servo_state
 {
 	serv_pos1,
 	serv_pos2,
@@ -28,19 +40,19 @@ typedef enum
 	serv_unknown,
 	serv_moving,
 	recipe_ended,
-}servo_state;
+};
 
-/* Fetch Functions */
-current_state_t get_state();
-int get_instruction(unsigned char *recipe);
-
-
+/* Helper Functions */
+void fetch_next(servo_t *servo);
+void set_states(system_state_t *new, int new_state1, int new_state2);
+void set_state(servo_t *serv, int new_state);
+uint8_t max(uint8_t num1, uint8_t num2);
 
 /* Action Functions */
-void execute(); // The top of the program
-void startup(); // Initializes all data structures and prepares device
-void chk_state(); // Points next instruction to the correct state
-
+void execute(int flg); // The top of the program
+void startup(system_state_t *now); // Initializes all data structures and prepares device
+void fetch_next_sys(system_state_t *system); // Points next instruction to the correct state
+void run_next(system_state_t *system);
 
 
 

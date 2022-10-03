@@ -10,7 +10,10 @@
 #ifndef INC_SERVO_H_
 #define INC_SERVO_H_
 
-int get_mov_delay(current_state_t now, int serv, servo_state newpos);
+static const int position[] = {50, 63, 75, 88, 100};
+
+
+int get_mov_delay(int distance);
 void move_servo(int serv, int newpos);
 
 #endif /* INC_SERVO_H_ */
