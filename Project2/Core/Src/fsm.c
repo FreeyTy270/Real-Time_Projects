@@ -117,7 +117,7 @@ void hold(servo_t *servo)
 void fetch_next(servo_t *servo)
 {
 	int loop_start = 0;
-	int nrepeat = 0;
+	static int nrepeat = 0;
 
 	static int new_index = 0;
 
@@ -315,7 +315,7 @@ int chk_state(servo_t *servo)
 	if(servo->status == status_cmd_error)
 	{
 		response = 1;
-		HAL_GPIO_SetPin(ERROR LED HIGH);
+		HAL_GPIO_WritePin(ERROR LED HIGH);
 	}
 	else if(servo->status == status_paused)
 	{

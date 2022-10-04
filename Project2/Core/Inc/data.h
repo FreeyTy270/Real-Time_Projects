@@ -13,10 +13,10 @@
 
 #include <stdint.h>
 
-#define MOV  	  	0x10
+#define MOV  	  	0x20
+#define WAIT 	  	0x40
 #define LOOP 	  	0x80
-#define WAIT 	  	0x20
-#define END_LOOP  	0x30
+#define END_LOOP  	0xA0
 #define END_RECIPE	0x00
 
 typedef struct opcode
