@@ -15,32 +15,56 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 #define UART huart2
 #define DMA hdma_usart2_rx
 
-#define RXBUF_SIZE 10
-#define MAINBUF_SIZE 20
+uint8_t rxbuf = 'n';
+uint8_t mainbuf[10] = {0};
 
-uint8_t rxbuf[] = {'n','n'};
-uint8_t mainbuf[MAINBUF_SIZE];
+_Bool cr_flg = 0;
+
 
 void Buf_Init(void)
 {
-	memset(rxbuf, '\0', RXBUF_SIZE);
-	memset(mainbuf, '\0', MAINBUF_SIZE);
-
-	HAL_UARTEx_ReceiveToIdle_DMA(&UART, rxbuf, RXBUF_SIZE);
-	__HAL_DMA_DISABLE_IT(&DMA, DMA_IT_HT);
+	memset(mainbuf, '\0',10);
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 {
+	uint8_t resp = 0;
+	static int index = 0;
+
+	printf("%c", rxbuf)
+
 	if (huart->Instance == USART2)
 	{
-		if(rxbuf)
-		memcpy(mainbuf, rxbuf, size);
-		memset(mainbuf, '\0', MAINBUF_SIZE);
-		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rxbuf, RXBUF_SIZE);
-		__HAL_DMA_DISABLE_IT(&DMA, DMA_IT_HT);
+		if(rxbuf[0] == '\n')
+		{
+			cr_flg = 1;
+			resp = '\n>';
+		}
+		if(rxbuf[0] == 'n' || rxbuf[0] == 'N')
+		{
+			resp = 'N';
+		}
+		else if(rxbuf[0] == 'C' || rxbuf[0] == 'c')
+		{
+			resp = 'C';
+		}
+		else if(rxbuf[0] == 'R' || rxbuf[0] == 'r')
+		{
+			resp = 'R';
+		}
+		else if(rxbuf[0] == 'P' || rxbuf[0] == 'p')
+		{
+			resp = 'P';
+		}
+		else if(rxbuf[0] == 'B' || rxbuf[0] == 'b')
+		{
+			resp = 'B';
+		}
 
+		mainbuf[index] = resp;
+		index += 1;
 
+		memset(rxbuf, '\0', 1);
 	}
 }
 

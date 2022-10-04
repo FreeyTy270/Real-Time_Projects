@@ -25,6 +25,14 @@ enum servo_state
 	serv_unknown,
 };
 
+enum status
+{
+	status_running,
+	status_paused,
+	status_cmd_error,
+	status_loop_error
+};
+
 /* Helper Functions */
 void fetch_next(servo_t *servo);
 void set_states(system_state_t *new, int new_state1, int new_state2);
@@ -40,8 +48,7 @@ void fetch_next_sys(system_state_t *system, int flg); // Points next instruction
 void run_next(system_state_t *system);
 void hold(servo_t *servo);
 int chk_states(system_state_t *system);
-
-
+void override_process(servo_t *servo, uint8_t cmd);
 
 
 #endif /* INC_FSM_H_ */

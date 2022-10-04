@@ -25,21 +25,14 @@ typedef struct opcode
 	int data;
 }opcode_t;
 
-enum status
-{
-	status_running,
-	status_paused,
-	status_command_error,
-	status_nested_error
-};
-
 enum events
 {
 	cont,
 	right,
 	left,
 	stop,
-	recipe_end
+	start,
+	swap
 };
 
 opcode_t read_recipe(const unsigned char *recipe, int index);

@@ -18,7 +18,7 @@ opcode_t read_recipe(const uint8_t *recipe, int index)
 {
 	opcode_t command;
 
-	command.operation = recipe[index] & 0x18;
+	command.operation = recipe[index] & 0xE0;
 	command.data = recipe[index] & 0x1F;
 
 	return command;
