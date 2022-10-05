@@ -8,7 +8,6 @@
 #include "uart.h"
 #include <stdio.h>
 #include "string.h"
-#include "stm32l4xx_hal.h"
 
 uint8_t rxbuf = 'n';
 uint8_t mainbuf[10] = { 0 };
@@ -30,7 +29,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
 		if (rxbuf == '\n')
 		{
 			cr_flg = 1;
-			resp = '\n>';
+			resp = '\n';
 		}
 		if (rxbuf == 'N' || rxbuf == 'n')
 		{

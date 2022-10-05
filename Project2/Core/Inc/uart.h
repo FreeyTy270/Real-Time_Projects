@@ -8,6 +8,7 @@
 #ifndef INC_UART_H_
 #define INC_UART_H_
 
+#include "stm32l4xx_hal.h"
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 

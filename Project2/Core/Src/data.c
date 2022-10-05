@@ -56,7 +56,7 @@ int run_inst(int dev, int position, opcode_t com)
 		move_servo(dev, com.data);
 		break;
 	case WAIT:
-		delay = com.data;
+		delay = com.data * 100;
 		break;
 	case LOOP:
 		delay = 32;
@@ -67,8 +67,6 @@ int run_inst(int dev, int position, opcode_t com)
 	case END_RECIPE:
 		delay = 34;
 		break;
-	default:
-		delay = 35;
 	}
 
 	return delay;

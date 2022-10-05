@@ -45,7 +45,7 @@ int chk_state(servo_t *servo);
 void execute(_Bool *flg); // The top of the program
 void startup(system_state_t *now); // Initializes all data structures and prepares device
 void fetch_next_sys(system_state_t *system, int flg); // Points next instruction to the correct state
-void run_next(system_state_t *system);
+int run_next(system_state_t *system);
 void hold(servo_t *servo);
 int chk_states(system_state_t *system);
 void override_process(servo_t *servo, uint8_t cmd);

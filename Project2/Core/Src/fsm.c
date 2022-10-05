@@ -15,6 +15,7 @@
 
 int servo_delay [2];
 
+extern TIM_HandleTypeDef htim6;
 extern uint8_t rxbuf;
 extern uint8_t mainbuf[];
 extern uint8_t *recipes[];
@@ -44,6 +45,7 @@ typedef struct system_state
 void execute(_Bool *flg)
 {
 	int resp = 0;
+	static int delay = 0;
 
 	static servo_t servo1 = {1, serv_unknown, status_paused};
 	static servo_t servo2 = {2, serv_unknown, status_paused};
@@ -54,19 +56,23 @@ void execute(_Bool *flg)
 
 	if(cr_flg)
 	{
-		override_process(sys->servo1, mainbuf[0]);
-		override_process(sys->servo2, mainbuf[1]);
+		override_process(sys.servo1, mainbuf[0]);
+		override_process(sys.servo2, mainbuf[1]);
 	}
 
-	if(!*flg)
+	if(TIM6->CNT == (1000 + delay) || !*flg)
 	{
-		startup(&sys);
-		*flg = 1;
-	}
+		if(!*flg)
+		{
+			startup(&sys);
+			*flg = 1;
+		}
 
-	resp = chk_states(&sys);
-	fetch_next_sys(&sys, resp);
-	run_next(&sys);
+		resp = chk_states(&sys);
+		fetch_next_sys(&sys, resp);
+		delay = run_next(&sys);
+		TIM6->CNT = 0;
+	}
 
 }
 
@@ -101,13 +107,14 @@ void startup(system_state_t *now)
 	Buf_Init();
 	now->servo1->recipe = recipes[0];
 	now->servo2->recipe = recipes[1];
-	set_states(now, serv_moving, serv_moving);
+	now->servo1->position = serv_moving;
+	now->servo2->position = serv_moving;
 	servo_delay[0] = get_mov_delay((serv_pos5 - serv_pos1));
-	servo_delay[1] = get_mov_delay((serv_pos5 - serv_pos1));
+	servo_delay[1] = servo_delay[0];
 	move_servo(now->servo1->dev, serv_pos1);
 	move_servo(now->servo1->dev, serv_pos1);
-	//HAL_Delay(max(servo_delay[0], servo_delay[1]));
-	set_states(now, serv_pos1, serv_pos1);
+	now->servo1->position = serv_pos1;
+	now->servo2->position = serv_pos1;
 }
 
 int chk_states(system_state_t *system)
@@ -184,19 +191,32 @@ int chk_state(servo_t *servo)
 	if(servo->status == status_cmd_error)
 	{
 		response = 1;
-		HAL_GPIO_WritePin(ERROR LED HIGH);
+		if(servo->dev = 1)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, 1);
+		}
 	}
 	else if(servo->status == status_paused)
 	{
 		response = 1;
+		if(servo->dev = 1)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5|GPIO_PIN_6, 0);
+		}
+
 	}
 	else if(servo->status == status_running)
 	{
 		response = 0;
 
+		if(servo->dev = 1)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
+		}
+
 		if(user_mov)
 		{
-			servo->status = status_running;
+			servo->status = status_paused;
 		}
 	}
 
@@ -265,7 +285,10 @@ void fetch_next(servo_t *servo)
 					servo->status == status_loop_error;
 					servo->new_com.operation = WAIT;
 					servo->new_com.data = 0;
-					HAL_GPIO_write(LOOP LED ERROR, 1);
+					if(servo->dev = 1)
+					{
+						HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5|GPIO_PIN_6, 1);
+					}
 				}
 				servo->recipe_index++;
 			case 3:
@@ -283,8 +306,10 @@ void fetch_next(servo_t *servo)
 	}
 }
 
-void run_next(system_state_t *system)
+int run_next(system_state_t *system)
 {
+	int delay = 0;
+
 	servo_delay[0] = run_inst(system->servo1->dev, system->servo1->position, system->servo1->new_com);
 	servo_delay[1] = run_inst(system->servo2->dev, system->servo2->position, system->servo2->new_com);
 
@@ -293,25 +318,25 @@ void run_next(system_state_t *system)
 
 	if(servo_delay[0] > 31)
 	{
-		HAL_Delay(100 + servo_delay[1]);
+		delay = servo_delay[1];
 	}
 	else if(servo_delay[1] > 31)
 	{
-		HAL_Delay(100 + servo_delay[0]);
+		delay = servo_delay[0];
 	}
 	else if(servo_delay[0] > 31 && servo_delay[1] > 31)
 	{
-		HAL_Delay(100);
+		delay = 0;
 	}
 	else
 	{
-		HAL_Delay(100 + max(servo_delay[0], servo_delay[1]));
+		delay = max(servo_delay[0], servo_delay[1]);
 	}
 }
 
 void chk_delay(servo_t *servo, const int delay)
 {
-	if(delay > 31)
+	if(delay > 31 && delay < 35)
 		{
 			switch(delay)
 			{
@@ -319,16 +344,13 @@ void chk_delay(servo_t *servo, const int delay)
 				servo->loop_flg = 1;
 				break;
 			case 33:
-				servo->loop_flg = 2;
+				servo->loop_flg = 3;
 				break;
 			case 34:
-				set_state(servo, recipe_ended);
-				break;
-			case 35:
-				set_state(servo, serv_unknown);
+				servo->position = recipe_ended;
 				break;
 			default:
-				set_state(servo, serv_moving);
+				servo->position = serv_moving;
 			}
 		}
 }
