@@ -6,14 +6,9 @@
  */
 
 #include "uart.h"
+#include <stdio.h>
 #include "string.h"
 #include "stm32l4xx_hal.h"
-
-extern UART_HandleTypeDef huart2;
-extern DMA_HandleTypeDef hdma_usart2_rx;
-
-#define UART huart2
-#define DMA hdma_usart2_rx
 
 uint8_t rxbuf = 'n';
 uint8_t mainbuf[10] = { 0 };

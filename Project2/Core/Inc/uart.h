@@ -8,7 +8,11 @@
 #ifndef INC_UART_H_
 #define INC_UART_H_
 
+extern UART_HandleTypeDef huart2;
+extern DMA_HandleTypeDef hdma_usart2_rx;
 
+#define UART huart2
+#define DMA hdma_usart2_rx
 /* Initializes used buffers to zero and also initializes the DMA */
 void Buf_Init(void);
 
