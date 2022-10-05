@@ -1,6 +1,8 @@
 .metadata/
 **/.settings/
 **/Debug/
+**/CEXAM/
+**/C-Exam/
 *.xml
 *.prefs
 *.o
