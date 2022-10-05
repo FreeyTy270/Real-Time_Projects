@@ -191,15 +191,16 @@ int chk_state(servo_t *servo)
 	if(servo->status == status_cmd_error)
 	{
 		response = 1;
-		if(servo->dev = 1)
+		if(servo->dev == 1)
 		{
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, 1);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
 		}
 	}
 	else if(servo->status == status_paused)
 	{
 		response = 1;
-		if(servo->dev = 1)
+		if(servo->dev == 1)
 		{
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5|GPIO_PIN_6, 0);
 		}
@@ -209,9 +210,10 @@ int chk_state(servo_t *servo)
 	{
 		response = 0;
 
-		if(servo->dev = 1)
+		if(servo->dev == 1)
 		{
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, 0);
 		}
 
 		if(user_mov)
@@ -285,9 +287,10 @@ void fetch_next(servo_t *servo)
 					servo->status == status_loop_error;
 					servo->new_com.operation = WAIT;
 					servo->new_com.data = 0;
-					if(servo->dev = 1)
+					if(servo->dev == 1)
 					{
 						HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5|GPIO_PIN_6, 1);
+
 					}
 				}
 				servo->recipe_index++;
@@ -332,6 +335,7 @@ int run_next(system_state_t *system)
 	{
 		delay = max(servo_delay[0], servo_delay[1]);
 	}
+	return delay;
 }
 
 void chk_delay(servo_t *servo, const int delay)

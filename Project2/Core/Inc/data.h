@@ -27,10 +27,10 @@ typedef struct opcode
 
 enum events
 {
+	stop,
 	cont,
 	right,
 	left,
-	stop,
 	start,
 	swap
 };
