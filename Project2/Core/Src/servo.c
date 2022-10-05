@@ -11,7 +11,7 @@
 
 #define MOV_TIME 75
 
-extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim3;
 
 int get_mov_delay(int distance)
 {
@@ -25,10 +25,10 @@ void move_servo(int serv, int newpos)
 {
 	if(serv == 1)
 	{
-		htim2.Instance->CCR1 = position[newpos];
+		htim3.Instance->CCR1 = position[newpos];
 	}
 	else if(serv == 2)
 	{
-		htim2.Instance->CCR2 = position[newpos];
+		htim3.Instance->CCR2 = position[newpos];
 	}
 }

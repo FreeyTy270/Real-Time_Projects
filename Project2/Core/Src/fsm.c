@@ -51,6 +51,7 @@ void execute(_Bool *flg)
 	static servo_t servo2 = {2, serv_unknown, status_paused};
 	static system_state_t sys = {&servo1, &servo2};
 
+	TIM6->CNT = 0;
 	HAL_UARTEx_ReceiveToIdle_DMA(&UART, &rxbuf, 1);
 	__HAL_DMA_DISABLE_IT(&DMA, DMA_IT_HT);
 
@@ -60,7 +61,7 @@ void execute(_Bool *flg)
 		override_process(sys.servo2, mainbuf[1]);
 	}
 
-	if(TIM6->CNT == (1000 + delay) || !*flg)
+	if(TIM6->CNT >= (1000 + delay) || !*flg)
 	{
 		if(!*flg)
 		{
@@ -358,8 +359,6 @@ void chk_delay(servo_t *servo, const int delay)
 			}
 		}
 }
-
-
 
 void hold(servo_t *servo)
 {
