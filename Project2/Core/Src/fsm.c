@@ -11,6 +11,7 @@
 #include "data.h"
 #include "uart.h"
 #include "servo.h"
+#include "string.h"
 #include "stm32l4xx.h"
 
 int servo_delay [2];
@@ -47,34 +48,33 @@ void execute(_Bool *flg)
 	int resp = 0;
 	static int delay = 0;
 
-	static servo_t servo1 = {1, serv_unknown, status_paused};
-	static servo_t servo2 = {2, serv_unknown, status_paused};
+	static servo_t servo1 = {1, serv_unknown, status_paused, start};
+	static servo_t servo2 = {2, serv_unknown, status_paused, start};
 	static system_state_t sys = {&servo1, &servo2};
 
-	TIM6->CNT = 0;
+	//TIM6->CNT = 0;
 	HAL_UARTEx_ReceiveToIdle_DMA(&UART, &rxbuf, 1);
 	__HAL_DMA_DISABLE_IT(&DMA, DMA_IT_HT);
+
+	if(!*flg)
+	{
+		startup(&sys);
+		*flg = 1;
+	}
 
 	if(cr_flg)
 	{
 		override_process(sys.servo1, mainbuf[0]);
 		override_process(sys.servo2, mainbuf[1]);
+		memset(mainbuf, 0, 2);
+		cr_flg = 0;
 	}
 
-	if(TIM6->CNT >= (1000 + delay) || !*flg)
-	{
-		if(!*flg)
-		{
-			startup(&sys);
-			*flg = 1;
-		}
-
-		resp = chk_states(&sys);
-		fetch_next_sys(&sys, resp);
-		delay = run_next(&sys);
-		TIM6->CNT = 0;
-	}
-
+	resp = chk_states(&sys);
+	fetch_next_sys(&sys, resp);
+	delay = run_next(&sys);
+	TIM6->CNT = 0;
+	HAL_Delay(100 + delay);
 }
 
 void override_process(servo_t *servo, uint8_t cmd)
@@ -103,19 +103,19 @@ void override_process(servo_t *servo, uint8_t cmd)
 	}
 }
 
-void startup(system_state_t *now)
+void startup(system_state_t *system)
 {
 	Buf_Init();
-	now->servo1->recipe = recipes[0];
-	now->servo2->recipe = recipes[1];
-	now->servo1->position = serv_moving;
-	now->servo2->position = serv_moving;
+	system->servo1->recipe = recipes[0];
+	system->servo2->recipe = recipes[1];
+	system->servo1->position = serv_moving;
+	system->servo2->position = serv_moving;
 	servo_delay[0] = get_mov_delay((serv_pos5 - serv_pos1));
 	servo_delay[1] = servo_delay[0];
-	move_servo(now->servo1->dev, serv_pos1);
-	move_servo(now->servo1->dev, serv_pos1);
-	now->servo1->position = serv_pos1;
-	now->servo2->position = serv_pos1;
+	move_servo(system->servo1->dev, serv_pos1);
+	move_servo(system->servo2->dev, serv_pos1);
+	system->servo1->position = serv_pos1;
+	system->servo2->position = serv_pos1;
 }
 
 int chk_states(system_state_t *system)
@@ -172,15 +172,15 @@ int chk_state(servo_t *servo)
 	{
 		if(servo->nxt_event == left && servo->position > 1)
 		{
-			servo->status == status_running;
+			servo->status = status_running;
 		}
 		else if(servo->nxt_event == right && servo->position < 5)
 		{
-			servo->status == status_running;
+			servo->status = status_running;
 		}
 		else
 		{
-			servo->status == status_cmd_error;
+			servo->status = status_cmd_error;
 		}
 	}
 	else
@@ -285,7 +285,7 @@ void fetch_next(servo_t *servo)
 				servo->new_com = read_recipe(servo->recipe, servo->recipe_index);
 				if(servo->new_com.operation == LOOP)
 				{
-					servo->status == status_loop_error;
+					servo->status = status_loop_error;
 					servo->new_com.operation = WAIT;
 					servo->new_com.data = 0;
 					if(servo->dev == 1)

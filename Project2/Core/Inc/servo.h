@@ -10,7 +10,7 @@
 #ifndef INC_SERVO_H_
 #define INC_SERVO_H_
 
-static const int position[] = {50, 63, 75, 88, 100};
+static const int position[] = {25, 36, 52, 68, 84, 100};
 
 
 int get_mov_delay(int distance);

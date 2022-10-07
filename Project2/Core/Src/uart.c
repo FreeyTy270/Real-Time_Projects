@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include "string.h"
 
+uint8_t mainbuf[2] = {0};
 uint8_t rxbuf = 'n';
-uint8_t mainbuf[10] = { 0 };
 
 unsigned char c_return[] = {'\n', '\r', '>'};
 unsigned char caret = '>';
@@ -24,7 +24,6 @@ void Buf_Init(void) {
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
-	uint8_t resp = 0;
 	static int index = 0;
 
 	HAL_UART_Transmit(&huart2, &rxbuf, 1, 2);
@@ -34,7 +33,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
 		if (rxbuf == '\r')
 		{
 			cr_flg = 1;
-			resp = '\n';
 			HAL_UART_Transmit(&huart2, c_return, sizeof(c_return), 2);
 		}
 		else if(rxbuf == '\b')
@@ -43,31 +41,37 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
 		}
 		else if (rxbuf == 'N' || rxbuf == 'n')
 		{
-			resp = 'N';
+			mainbuf[index] = 'N';
 		}
 		else if (rxbuf == 'C' || rxbuf == 'c')
 		{
-			resp = 'C';
+			mainbuf[index] = 'C';
 		}
 		else if (rxbuf == 'R' || rxbuf == 'r')
 		{
-			resp = 'R';
+			mainbuf[index] = 'R';
 		}
 		else if (rxbuf == 'P' || rxbuf == 'p')
 		{
-			resp = 'P';
+			mainbuf[index] = 'P';
 		}
 		else if (rxbuf == 'B' || rxbuf == 'b')
 		{
-			resp = 'B';
+			mainbuf[index] = 'B';
 		}
 		else if (rxbuf == 'S' || rxbuf == 's')
 		{
-			resp = 'S';
+			mainbuf[index] = 'S';
 		}
 
-		mainbuf[index] = resp;
-		index += 1;
+		if(index == 1)
+		{
+			index = 0;
+		}
+		else
+		{
+			index ++;
+		}
 
 		rxbuf = 'n';
 	}

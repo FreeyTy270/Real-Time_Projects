@@ -34,21 +34,19 @@ enum status
 };
 
 /* Helper Functions */
+int chk_state(servo_t *servo);
 void fetch_next(servo_t *servo);
-void set_states(system_state_t *new, int new_state1, int new_state2);
-void set_state(servo_t *serv, int new_state);
 int max(int num1, int num2);
 void chk_delay(servo_t *servo, const int delay);
-int chk_state(servo_t *servo);
 
 /* Action Functions */
 void execute(_Bool *flg); // The top of the program
-void startup(system_state_t *now); // Initializes all data structures and prepares device
+void override_process(servo_t *servo, uint8_t cmd);
+void startup(system_state_t *system); // Initializes all data structures and prepares device
 void fetch_next_sys(system_state_t *system, int flg); // Points next instruction to the correct state
+int chk_states(system_state_t *system);
 int run_next(system_state_t *system);
 void hold(servo_t *servo);
-int chk_states(system_state_t *system);
-void override_process(servo_t *servo, uint8_t cmd);
 
 
 #endif /* INC_FSM_H_ */
