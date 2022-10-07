@@ -11,8 +11,6 @@
 #ifndef INC_DATA_H_
 #define INC_DATA_H_
 
-#include <stdint.h>
-
 #define MOV  	  	0x20
 #define WAIT 	  	0x40
 #define LOOP 	  	0x80

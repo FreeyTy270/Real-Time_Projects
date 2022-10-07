@@ -5,8 +5,8 @@
  *      Author: Ty Freeman
  */
 
-#include "uart.h"
 #include <stdio.h>
+#include "uart.h"
 #include "string.h"
 
 uint8_t mainbuf[2] = {0};
@@ -18,7 +18,8 @@ unsigned char clr = '\0';
 
 _Bool cr_flg = 0;
 
-void Buf_Init(void) {
+void Buf_Init(void)
+{
 	memset(mainbuf, '\0', 10);
 	HAL_UART_Transmit(&huart2, &caret, sizeof(caret), 2);
 }

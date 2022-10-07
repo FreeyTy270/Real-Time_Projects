@@ -1,13 +1,28 @@
 /*
- * data.c
+ * low_level.c
  *
- *  Created on: Oct 3, 2022
+ *  Created on: Oct 7, 2022
  *      Author: Ty Freeman
  */
 
-#include "data.h"
-#include "servo.h"
+#include "low_level.h"
 #include "stm32l4xx.h"
+
+#define MOV_TIME 75
+extern TIM_HandleTypeDef htim3;
+
+static const int position[] = {25, 36, 52, 68, 84, 100};
+
+opcode_t read_recipe(const uint8_t *recipe, int index)
+{
+	opcode_t command;
+
+	command.operation = recipe[index] & 0xE0;
+	command.data = recipe[index] & 0x1F;
+
+	return command;
+
+}
 
 int chk_loop(int repeat)
 {
@@ -54,4 +69,24 @@ int run_inst(int dev, int position, opcode_t com)
 	}
 
 	return delay;
+}
+
+int get_mov_delay(int distance)
+{
+	int travel_time = 0;
+
+	travel_time = distance * MOV_TIME;
+	return travel_time;
+}
+
+void move_servo(int serv, int newpos)
+{
+	if(serv == 1)
+	{
+		htim3.Instance->CCR1 = position[newpos];
+	}
+	else if(serv == 2)
+	{
+		htim3.Instance->CCR2 = position[newpos];
+	}
 }
