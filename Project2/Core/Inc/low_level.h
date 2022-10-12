@@ -15,11 +15,6 @@
 #define END_LOOP  	0xA0
 #define END_RECIPE	0x00
 
-uint8_t recipe1[] = {MOV + 3, MOV | 5, END_RECIPE};
-uint8_t recipe2[] = {MOV | 5, MOV | 2, END_RECIPE};
-
-uint8_t *recipes[] = {recipe1, recipe2};
-
 typedef struct opcode
 {
 	int operation;

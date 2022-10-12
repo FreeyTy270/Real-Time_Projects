@@ -18,12 +18,22 @@ unsigned char clr = '\0';
 
 _Bool cr_flg = 0;
 
+/**********************************************************
+* 													      *
+** Clear buffer and transmit override symbol to terminal **
+* 														  *
+***********************************************************/
 void Buf_Init(void)
 {
 	memset(mainbuf, '\0', 10);
 	HAL_UART_Transmit(&huart2, &caret, sizeof(caret), 2);
 }
 
+/******************************************************************************
+* 																			  *
+** DMA callback function which processes character captured in the Rx buffer **
+* 																			  *
+******************************************************************************/
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
 	static int index = 0;
 

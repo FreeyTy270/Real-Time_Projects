@@ -13,6 +13,14 @@ extern TIM_HandleTypeDef htim3;
 
 static const int position[] = {25, 36, 52, 68, 84, 100};
 
+uint8_t recipe1[] = {MOV + 3, MOV | 5, END_RECIPE};
+uint8_t recipe2[] = {MOV | 5, MOV | 2, END_RECIPE};
+
+uint8_t *recipes[] = {recipe1, recipe2};
+
+/*
+ * Structure definition for holding both operation and data of opcode command
+ */
 opcode_t read_recipe(const uint8_t *recipe, int index)
 {
 	opcode_t command;
@@ -24,24 +32,11 @@ opcode_t read_recipe(const uint8_t *recipe, int index)
 
 }
 
-int chk_loop(int repeat)
-{
-	static _Bool first_flg = 1;
-	static int nrepeat = 0;
-
-	if(first_flg)
-	{
-		first_flg = 0;
-		nrepeat = repeat;
-	}
-	else
-	{
-		nrepeat --;
-	}
-
-	return nrepeat;
-}
-
+/*************************************************************************
+* 																		 *
+** Return delay data based on current command. Move servo if applicable **
+* 															             *
+*************************************************************************/
 int run_inst(int dev, int position, opcode_t com)
 {
 	int delay = 0;
@@ -71,6 +66,11 @@ int run_inst(int dev, int position, opcode_t com)
 	return delay;
 }
 
+/******************************************************************************************
+* 																						  *
+** Calculate delay modifier based on distance between current position and next position **
+* 																						  *
+******************************************************************************************/
 int get_mov_delay(int distance)
 {
 	int travel_time = 0;
@@ -79,6 +79,11 @@ int get_mov_delay(int distance)
 	return travel_time;
 }
 
+/**********************************************************************
+* 																	  *
+** Change pulse width of desired timer channel based on new position **
+* 																	  *
+**********************************************************************/
 void move_servo(int serv, int newpos)
 {
 	if(serv == 1)

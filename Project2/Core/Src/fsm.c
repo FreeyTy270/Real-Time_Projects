@@ -22,6 +22,9 @@ extern uint8_t mainbuf[];
 extern uint8_t *recipes[];
 extern _Bool cr_flg;
 
+/*
+ * Container definition of whole system. Pointers to the defined devices: servo1 and servo2
+ */
 typedef struct system_state
 {
 	servo_t *servo1;
@@ -29,43 +32,64 @@ typedef struct system_state
 
 }system_state_t;
 
+/******************************************************************************************
+* 																						  *
+** Program function. Flg parameter signals very beginning of program or repeat iteration **
+* 																						  *
+******************************************************************************************/
 void execute(_Bool *flg)
 {
 	int resp = 0;
 	static int delay = 0;
 
-	static system_state_t sys = {&servo1, &servo2};
+	static system_state_t sys = {&servo1, &servo2}; // Declare system
 
-	//TIM6->CNT = 0;
-	HAL_UARTEx_ReceiveToIdle_DMA(&UART, &rxbuf, 1);
+	HAL_UARTEx_ReceiveToIdle_DMA(&UART, &rxbuf, 1); // Begin DMA
 	__HAL_DMA_DISABLE_IT(&DMA, DMA_IT_HT);
 
-	if(!*flg)
+	if(!*flg) // If the flg is not set then this is the first time execute is called and the servos must be initialized
 	{
 		startup(&sys);
 		*flg = 1;
 	}
 
-	if(cr_flg)
+	set_servo(sys.servo1, p_nxt_event, nothing);
+	set_servo(sys.servo2, p_nxt_event, nothing);
+
+	if(cr_flg) // If carriage return is seen from DMA then first check the entered overrides
 	{
 		override_process(sys.servo1, mainbuf[0]);
 		override_process(sys.servo2, mainbuf[1]);
-		memset(mainbuf, 0, 2);
-		cr_flg = 0;
+		memset(mainbuf, 0, 2); // Clear the command buffer for future reads
+		cr_flg = 0; // Clear carriage return flag
 	}
 
-	resp = chk_states(&sys);
-	sys_fetch_next(&sys, resp);
-	delay = run_next(&sys);
-	HAL_Delay(100 + delay);
+	resp = chk_states(&sys); // Gather response of each servo. Check/set next state and process next event requests
+	sys_fetch_next(&sys, resp); // Based on servo responses fetch the next command for each servo
+	delay = run_next(&sys); // Process the previously set command. MOV or return modified delay value
+	HAL_Delay(100 + delay); // Hold the rest of the time for the desired 100ms loop frequency
 }
 
+/***************************************************************************
+* 																		   *
+** Call initialization of both servos and the uart initialization as well **
+* 																		   *
+***************************************************************************/
 void startup(system_state_t *system)
 {
 	Buf_Init();
-	go(system->servo1, system->servo2);
+	go(system->servo1);
+	go(system->servo2);
 }
 
+/************************************************************
+* 															*
+** Call the state checking routine defined in ind_level.c. **
+** If servo status is running the chk_state response is 0  **
+** If the servo is stopped for another reason it will be   **
+** 					greater than zero					   **
+* 															*
+************************************************************/
 int chk_states(system_state_t *system)
 {
 
@@ -85,7 +109,14 @@ int chk_states(system_state_t *system)
 	return servo1_resp + servo2_resp;
 }
 
-void fetch_next_sys(system_state_t *system, int flg)
+/****************************************************************
+* 																*
+** Given the response from chk_states this routine will either **
+** hold the necessary servo[s] or fetch the next command to be **
+** 							executed 						   **
+* 																*
+****************************************************************/
+void sys_fetch_next(system_state_t *system, int flg)
 {
 	switch(flg)
 		{
@@ -105,6 +136,12 @@ void fetch_next_sys(system_state_t *system, int flg)
 		}
 }
 
+/**********************************************************
+* 														  *
+** Run the commands fetched from sys_fetch_next. Process **
+**  returned delay to return the correct delay modifier  **
+* 														  *
+**********************************************************/
 int run_next(system_state_t *system)
 {
 	int delay = 0;
@@ -131,7 +168,11 @@ int run_next(system_state_t *system)
 	return delay;
 }
 
-
+/**********************************
+* 							      *
+** Returns maximum of two values **
+* 								  *
+**********************************/
 int max(int num1, int num2)
 {
 	int n = ((num1-num2) > 0) ? num1 : num2;
