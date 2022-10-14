@@ -16,6 +16,7 @@ enum events
 {
 	stop,
 	cont,
+	nothing,
 	right,
 	left,
 	start,
@@ -39,7 +40,15 @@ enum status
 	status_running,
 	status_paused,
 	status_cmd_error,
-	status_loop_error
+	status_loop_error,
+	status_swapping
+};
+
+enum params{
+	p_position,
+	p_status,
+	p_nxt_event,
+	p_recipe_index
 };
 
 void override_process(servo_t *servo, uint8_t cmd);
@@ -48,6 +57,8 @@ void fetch_next(servo_t *servo);
 int run_servo(servo_t *servo);
 void chk_delay(servo_t *servo, const int delay);
 void hold(servo_t *servo);
-void go(servo_t *servo1, servo_t *servo2);
+void go(servo_t *servo1);
+void swap_recipe(servo_t *servo1, servo_t *servo2, int swap_flg);
+void set_servo(servo_t *servo, int param, int val);
 
 #endif /* INC_IND_LEVEL_H_ */
