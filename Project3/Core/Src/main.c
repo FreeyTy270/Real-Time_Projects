@@ -42,9 +42,12 @@
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart2;
 
-osThreadId tellerTaskHandle;
-osThreadId custTaskHandle;
-osThreadId timMngTaskHandle;
+osThreadId mngTaskHandle;
+osThreadId teller1Handle;
+osThreadId teller2Handle;
+osThreadId teller4Handle;
+osThreadId idleTaskHandle;
+osMessageQId custHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -53,9 +56,9 @@ osThreadId timMngTaskHandle;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-void teller_init(void const * argument);
-void cust_init(void const * argument);
-void timMng_init(void const * argument);
+void mng_Init(void const * argument);
+void teller_Init(void const * argument);
+void spinner(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -111,22 +114,35 @@ int main(void)
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* definition and creation of cust */
+  osMessageQDef(cust, 16, uint16_t);
+  custHandle = osMessageCreate(osMessageQ(cust), NULL);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of tellerTask */
-  osThreadDef(tellerTask, teller_init, osPriorityNormal, 0, 128);
-  tellerTaskHandle = osThreadCreate(osThread(tellerTask), NULL);
+  /* definition and creation of mngTask */
+  osThreadDef(mngTask, mng_Init, osPriorityHigh, 0, 128);
+  mngTaskHandle = osThreadCreate(osThread(mngTask), NULL);
 
-  /* definition and creation of custTask */
-  osThreadDef(custTask, cust_init, osPriorityIdle, 0, 128);
-  custTaskHandle = osThreadCreate(osThread(custTask), NULL);
+  /* definition and creation of teller1 */
+  osThreadDef(teller1, teller_Init, osPriorityNormal, 0, 128);
+  teller1Handle = osThreadCreate(osThread(teller1), NULL);
 
-  /* definition and creation of timMngTask */
-  osThreadDef(timMngTask, timMng_init, osPriorityIdle, 0, 128);
-  timMngTaskHandle = osThreadCreate(osThread(timMngTask), NULL);
+  /* definition and creation of teller2 */
+  osThreadDef(teller2, teller_Init, osPriorityNormal, 0, 128);
+  teller2Handle = osThreadCreate(osThread(teller2), NULL);
+
+  /* definition and creation of teller4 */
+  osThreadDef(teller4, teller_Init, osPriorityIdle, 0, 128);
+  teller4Handle = osThreadCreate(osThread(teller4), NULL);
+
+  /* definition and creation of idleTask */
+  osThreadDef(idleTask, spinner, osPriorityIdle, 0, 128);
+  idleTaskHandle = osThreadCreate(osThread(idleTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -162,6 +178,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -179,6 +196,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
@@ -266,14 +284,14 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_teller_init */
+/* USER CODE BEGIN Header_mng_Init */
 /**
-  * @brief  Function implementing the tellerTask thread.
+  * @brief  Function implementing the mngTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_teller_init */
-void teller_init(void const * argument)
+/* USER CODE END Header_mng_Init */
+void mng_Init(void const * argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
@@ -284,40 +302,40 @@ void teller_init(void const * argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_cust_init */
+/* USER CODE BEGIN Header_teller_Init */
 /**
-* @brief Function implementing the custTask thread.
+* @brief Function implementing the tellerTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_cust_init */
-void cust_init(void const * argument)
+/* USER CODE END Header_teller_Init */
+void teller_Init(void const * argument)
 {
-  /* USER CODE BEGIN cust_init */
+  /* USER CODE BEGIN teller_Init */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END cust_init */
+  /* USER CODE END teller_Init */
 }
 
-/* USER CODE BEGIN Header_timMng_init */
+/* USER CODE BEGIN Header_spinner */
 /**
-* @brief Function implementing the timMngTask thread.
+* @brief Function implementing the idleTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_timMng_init */
-void timMng_init(void const * argument)
+/* USER CODE END Header_spinner */
+void spinner(void const * argument)
 {
-  /* USER CODE BEGIN timMng_init */
+  /* USER CODE BEGIN spinner */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END timMng_init */
+  /* USER CODE END spinner */
 }
 
 /**
@@ -372,4 +390,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
