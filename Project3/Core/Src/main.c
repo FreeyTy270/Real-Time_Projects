@@ -32,7 +32,11 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef struct customer{
 
+	TickType_t timeHelped;
+	int tcktNmbr;
+}customer_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -85,7 +89,7 @@ void spinner_Task(void const * argument);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	customer_t cust = {0, 1};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -320,7 +324,10 @@ void mng_Task(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    if(custTime == rndmNum)
+    {
+
+    }
   }
   /* USER CODE END 5 */
 }
@@ -339,8 +346,7 @@ void teller_Task(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-	HAL_UART_Transmit(&huart2, pData, Size, Timeout), pData, Size, Timeout);
-    osDelay(1);
+
   }
   /* USER CODE END teller_Task */
 }
