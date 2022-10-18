@@ -18,11 +18,16 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
+//#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "queue.h"
+#include "semphr.h"
+#include "event_groups.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,15 +45,18 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-UART_HandleTypeDef huart2;
+RNG_HandleTypeDef hrng;
 
-osThreadId mngTaskHandle;
-osThreadId teller1Handle;
-osThreadId teller2Handle;
-osThreadId teller4Handle;
-osThreadId idleTaskHandle;
+UART_HandleTypeDef huart2;
 osMessageQId custHandle;
+
 /* USER CODE BEGIN PV */
+
+TaskHandle_t h_mngTask;
+TaskHandle_t h_teller1;
+TaskHandle_t h_teller2;
+TaskHandle_t h_teller3;
+TaskHandle_t h_spinner;
 
 /* USER CODE END PV */
 
@@ -56,9 +64,10 @@ osMessageQId custHandle;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-void mng_Init(void const * argument);
-void teller_Init(void const * argument);
-void spinner(void const * argument);
+static void MX_RNG_Init(void);
+void mng_Task(void const * argument);
+void teller_Task(void const * argument);
+void spinner_Task(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -98,6 +107,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_RNG_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -124,32 +134,19 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of mngTask */
-  osThreadDef(mngTask, mng_Init, osPriorityHigh, 0, 128);
-  mngTaskHandle = osThreadCreate(osThread(mngTask), NULL);
-
-  /* definition and creation of teller1 */
-  osThreadDef(teller1, teller_Init, osPriorityNormal, 0, 128);
-  teller1Handle = osThreadCreate(osThread(teller1), NULL);
-
-  /* definition and creation of teller2 */
-  osThreadDef(teller2, teller_Init, osPriorityNormal, 0, 128);
-  teller2Handle = osThreadCreate(osThread(teller2), NULL);
-
-  /* definition and creation of teller4 */
-  osThreadDef(teller4, teller_Init, osPriorityIdle, 0, 128);
-  teller4Handle = osThreadCreate(osThread(teller4), NULL);
-
-  /* definition and creation of idleTask */
-  osThreadDef(idleTask, spinner, osPriorityIdle, 0, 128);
-  idleTaskHandle = osThreadCreate(osThread(idleTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  xTaskCreate(mng_Task, "Mngr", 128, NULL, PriorityHigh, &h_mngTask);
+  xTaskCreate(teller_Task, "Teller1", 128, 1, PriorityNormal, &h_teller1);
+  xTaskCreate(teller_Task, "Teller2", 128, 2, PriorityNormal, &h_teller2);
+  xTaskCreate(teller_Task, "Teller3", 128, 3, PriorityNormal, &h_teller3);
+  xTaskCreate(spinner_Task, "Spinning", 128, NULL, PriorityIdle, &spinner);
+
+
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
-  osKernelStart();
+  vTaskStartScheduler();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -210,6 +207,32 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief RNG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RNG_Init(void)
+{
+
+  /* USER CODE BEGIN RNG_Init 0 */
+
+  /* USER CODE END RNG_Init 0 */
+
+  /* USER CODE BEGIN RNG_Init 1 */
+
+  /* USER CODE END RNG_Init 1 */
+  hrng.Instance = RNG;
+  if (HAL_RNG_Init(&hrng) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RNG_Init 2 */
+
+  /* USER CODE END RNG_Init 2 */
+
 }
 
 /**
@@ -291,7 +314,7 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_mng_Init */
-void mng_Init(void const * argument)
+void mng_Task(void const * argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
@@ -309,15 +332,17 @@ void mng_Init(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_teller_Init */
-void teller_Init(void const * argument)
+void teller_Task(void const * argument)
 {
-  /* USER CODE BEGIN teller_Init */
+  /* USER CODE BEGIN teller_Task */
+	int tellerNum = argument;
   /* Infinite loop */
   for(;;)
   {
+	HAL_UART_Transmit(&huart2, pData, Size, Timeout), pData, Size, Timeout);
     osDelay(1);
   }
-  /* USER CODE END teller_Init */
+  /* USER CODE END teller_Task */
 }
 
 /* USER CODE BEGIN Header_spinner */
@@ -327,7 +352,7 @@ void teller_Init(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_spinner */
-void spinner(void const * argument)
+void spinner_Task(void const * argument)
 {
   /* USER CODE BEGIN spinner */
   /* Infinite loop */

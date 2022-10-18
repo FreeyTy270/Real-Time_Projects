@@ -36,7 +36,16 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+enum  Priority{
+  PriorityIdle          = -3,          ///< priority: idle (lowest)
+  PriorityLow           = -2,          ///< priority: low
+  PriorityBelowNormal   = -1,          ///< priority: below normal
+  PriorityNormal        =  0,          ///< priority: normal (default)
+  PriorityAboveNormal   = +1,          ///< priority: above normal
+  PriorityHigh          = +2,          ///< priority: high
+  PriorityRealtime      = +3,          ///< priority: realtime (highest)
+  PriorityError         =  0x84        ///< system cannot determine priority or thread has illegal priority
+};
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
