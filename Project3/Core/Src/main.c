@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-//#include "cmsis_os.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -29,6 +29,7 @@
 #include "semphr.h"
 #include "event_groups.h"
 #include "string.h"
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,12 +48,15 @@
 /* Private variables ---------------------------------------------------------*/
 RNG_HandleTypeDef hrng;
 
-UART_HandleTypeDef huart2;
-osMessageQId custHandle;
+TIM_HandleTypeDef htim2;
 
+UART_HandleTypeDef huart2;
+
+osThreadId spinnerTaskHandle;
 /* USER CODE BEGIN PV */
 
 QueueHandle_t waitingRoom;
+SemaphoreHandle_t doorKey;
 
 TaskHandle_t h_mngTask;
 TaskHandle_t h_teller1;
@@ -69,12 +73,12 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_RNG_Init(void);
-void mng_Task(void const * argument);
-void teller_Task(void const * argument);
+static void MX_TIM2_Init(void);
 void spinner_Task(void const * argument);
 
 /* USER CODE BEGIN PFP */
-
+void mng_Task(void const * argument);
+void teller_Task(void const * argument);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -111,6 +115,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_RNG_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -120,26 +125,32 @@ int main(void)
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
-  /* Create the queue(s) */
-  /* definition and creation of cust */
   /* USER CODE BEGIN RTOS_QUEUES */
   waitingRoom = xQueueCreate(20, sizeof(int));
   if(waitingRoom == 0)
   {
 	  char *msg = "Unable to build waiting room\n\n";
 	  HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen(msg), 50);
+	  exit(1);
+  }
+
+  doorKey = xSemaphoreCreateMutex();
+  if(doorKey == NULL)
+  {
+	  char *msg = "Key to the door was lost. Cannot open today\n\n";
+	  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 2);
+	  exit(1);
   }
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-
   /* USER CODE BEGIN RTOS_THREADS */
   xTaskCreate(mng_Task, "Mngr", 128, NULL, PriorityHigh, &h_mngTask);
   xTaskCreate(teller_Task, "Teller1", 128, 1, PriorityNormal, &h_teller1);
@@ -147,11 +158,13 @@ int main(void)
   xTaskCreate(teller_Task, "Teller3", 128, 3, PriorityNormal, &h_teller3);
   xTaskCreate(spinner_Task, "Spinning", 128, NULL, PriorityIdle, &spinner);
 
+  /* Start scheduler */
+
+  vTaskStartScheduler();
 
   /* USER CODE END RTOS_THREADS */
 
-  /* Start scheduler */
-  vTaskStartScheduler();
+
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -241,6 +254,51 @@ static void MX_RNG_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 20000-1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4294967295;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -309,66 +367,74 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void mng_Task(void const * argument)
+{
+	int timeStamp;
+	uint32_t rand_int;
+	int last_cust = 0;
+
+	HAL_TIM_Base_Start(&htim2);
+
+	while(1)
+	{
+		if(startOfDay)
+		{
+			HAL_RNG_GenerateRandomNumber(&hrng, &rand_int);
+			int ent_cust = ((rand_int/pow(2, 32)) * (240 - 60) + 60) * 0.6;
+
+			if(TIM2->CNT == (last_cust + ent_cust))
+			{
+				timeStamp = TIM2->CNT;
+				xQueueSendToBack(waitingRoom, timeStamp, 5);
+			}
+
+
+			if(TIM2->CNT >= 42000)
+			{
+				/* Day has ended. Time to lock the bank door */
+				TIM2->CNT = 0;
+				HAL_TIM_Base_Stop(&htim2);
+
+			}
+
+		}
+	}
+}
+
+void teller_Task(void const * argument)
+{
+	int cust_timeStamp;
+	int tellerNum = argument;
+
+	while(1)
+	{
+		if(uxQueueMessagesWaiting(waitingRoom) != 0)
+		{
+			cust_timeStamp = xQueueReceive(waitingRoom, &cust_timeStamp, 5);
+		}
+	}
+}
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_mng_Init */
+/* USER CODE BEGIN Header_spinner_Task */
 /**
-  * @brief  Function implementing the mngTask thread.
+  * @brief  Function implementing the spinnerTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_mng_Init */
-void mng_Task(void const * argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    if(custTime == rndmNum)
-    {
-    	xQueueSend()
-    }
-  }
-  /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_teller_Init */
-/**
-* @brief Function implementing the tellerTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_teller_Init */
-void teller_Task(void const * argument)
-{
-  /* USER CODE BEGIN teller_Task */
-	int tellerNum = argument;
-	int tcktNum = 0;
-  /* Infinite loop */
-  for(;;)
-  {
-
-  }
-  /* USER CODE END teller_Task */
-}
-
-/* USER CODE BEGIN Header_spinner */
-/**
-* @brief Function implementing the idleTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_spinner */
+/* USER CODE END Header_spinner_Task */
 void spinner_Task(void const * argument)
 {
-  /* USER CODE BEGIN spinner */
+  /* USER CODE BEGIN 5 */
+	unsigned char *msg = "OS Spinning\n\n";
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    HAL_UART_Transmit(&huart2, msg, sizeof(msg), 2);
+    vTaskDelay(5);
   }
-  /* USER CODE END spinner */
+  /* USER CODE END 5 */
 }
 
 /**
@@ -403,6 +469,8 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+	  unsigned char *msg = "In Error Handler";
+	  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 2);
   }
   /* USER CODE END Error_Handler_Debug */
 }
