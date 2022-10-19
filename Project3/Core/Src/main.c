@@ -28,15 +28,11 @@
 #include "queue.h"
 #include "semphr.h"
 #include "event_groups.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-typedef struct customer{
-
-	TickType_t timeHelped;
-	int tcktNmbr;
-}customer_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -56,11 +52,15 @@ osMessageQId custHandle;
 
 /* USER CODE BEGIN PV */
 
+QueueHandle_t waitingRoom;
+
 TaskHandle_t h_mngTask;
 TaskHandle_t h_teller1;
 TaskHandle_t h_teller2;
 TaskHandle_t h_teller3;
 TaskHandle_t h_spinner;
+
+int customer = 0;
 
 /* USER CODE END PV */
 
@@ -89,7 +89,6 @@ void spinner_Task(void const * argument);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	customer_t cust = {0, 1};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -130,11 +129,13 @@ int main(void)
 
   /* Create the queue(s) */
   /* definition and creation of cust */
-  osMessageQDef(cust, 16, uint16_t);
-  custHandle = osMessageCreate(osMessageQ(cust), NULL);
-
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  waitingRoom = xQueueCreate(20, sizeof(int));
+  if(waitingRoom == 0)
+  {
+	  char *msg = "Unable to build waiting room\n\n";
+	  HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen(msg), 50);
+  }
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -326,7 +327,7 @@ void mng_Task(void const * argument)
   {
     if(custTime == rndmNum)
     {
-
+    	xQueueSend()
     }
   }
   /* USER CODE END 5 */
@@ -343,6 +344,7 @@ void teller_Task(void const * argument)
 {
   /* USER CODE BEGIN teller_Task */
 	int tellerNum = argument;
+	int tcktNum = 0;
   /* Infinite loop */
   for(;;)
   {
