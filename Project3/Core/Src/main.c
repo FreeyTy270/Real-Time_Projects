@@ -377,8 +377,7 @@ void mng_Task(void const * argument)
 
 	while(1)
 	{
-		if(startOfDay)
-		{
+
 			HAL_RNG_GenerateRandomNumber(&hrng, &rand_int);
 			int ent_cust = ((rand_int/pow(2, 32)) * (240 - 60) + 60) * 0.6;
 
@@ -397,8 +396,6 @@ void mng_Task(void const * argument)
 
 			}
 
-		}
-	}
 }
 
 void teller_Task(void const * argument)
@@ -410,7 +407,8 @@ void teller_Task(void const * argument)
 	{
 		if(uxQueueMessagesWaiting(waitingRoom) != 0)
 		{
-			cust_timeStamp = xQueueReceive(waitingRoom, &cust_timeStamp, 5);
+			xQueueReceive(waitingRoom, &cust_timeStamp, 5);
+			printf("The new customer time stamp: %d\n", cust_timeStamp);
 		}
 	}
 }
