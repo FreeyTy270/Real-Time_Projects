@@ -22,6 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <stdlib.h>
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
@@ -52,7 +54,6 @@ TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart2;
 
-osThreadId spinnerTaskHandle;
 /* USER CODE BEGIN PV */
 
 QueueHandle_t waitingRoom;
@@ -74,11 +75,11 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_RNG_Init(void);
 static void MX_TIM2_Init(void);
-void spinner_Task(void const * argument);
 
 /* USER CODE BEGIN PFP */
-void mng_Task(void const * argument);
-void teller_Task(void const * argument);
+void mng_Task( void * pvParameters );
+void teller_Task( void * pvParameters );
+void spinner_Task( void * pvParameters );
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -136,16 +137,14 @@ int main(void)
   waitingRoom = xQueueCreate(20, sizeof(int));
   if(waitingRoom == 0)
   {
-	  char *msg = "Unable to build waiting room\n\n";
-	  HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen(msg), 50);
+	  printf("Unable to build waiting room\n\n");
 	  exit(1);
   }
 
   doorKey = xSemaphoreCreateMutex();
   if(doorKey == NULL)
   {
-	  char *msg = "Key to the door was lost. Cannot open today\n\n";
-	  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 2);
+	  printf("Key to the door was lost. Cannot open today\n\n");
 	  exit(1);
   }
   /* USER CODE END RTOS_QUEUES */
@@ -153,10 +152,10 @@ int main(void)
   /* Create the thread(s) */
   /* USER CODE BEGIN RTOS_THREADS */
   xTaskCreate(mng_Task, "Mngr", 128, NULL, PriorityHigh, &h_mngTask);
-  xTaskCreate(teller_Task, "Teller1", 128, 1, PriorityNormal, &h_teller1);
-  xTaskCreate(teller_Task, "Teller2", 128, 2, PriorityNormal, &h_teller2);
-  xTaskCreate(teller_Task, "Teller3", 128, 3, PriorityNormal, &h_teller3);
-  xTaskCreate(spinner_Task, "Spinning", 128, NULL, PriorityIdle, &spinner);
+  xTaskCreate(teller_Task, "Teller1", 128,(int *) 1, PriorityNormal, &h_teller1);
+  xTaskCreate(teller_Task, "Teller1", 128,(int *) 2, PriorityNormal, &h_teller1);
+  xTaskCreate(teller_Task, "Teller3", 128,(int *) 3, PriorityNormal, &h_teller3);
+  xTaskCreate(spinner_Task, "Spinning", 128, NULL, PriorityIdle, &h_spinner);
 
   /* Start scheduler */
 
@@ -367,7 +366,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void mng_Task(void const * argument)
+void mng_Task( void * pvParameters )
 {
 	int timeStamp;
 	uint32_t rand_int;
@@ -395,45 +394,35 @@ void mng_Task(void const * argument)
 				HAL_TIM_Base_Stop(&htim2);
 
 			}
-
+	}
 }
 
-void teller_Task(void const * argument)
+void teller_Task( void * pvParameters )
 {
 	int cust_timeStamp;
-	int tellerNum = argument;
+	int tellerNum = (int) pvParameters;
 
 	while(1)
 	{
 		if(uxQueueMessagesWaiting(waitingRoom) != 0)
 		{
 			xQueueReceive(waitingRoom, &cust_timeStamp, 5);
+			printf("Currently with teller %d\n", tellerNum);
 			printf("The new customer time stamp: %d\n", cust_timeStamp);
 		}
 	}
 }
+void spinner_Task( void * pvParameters )
+{
+	  /* Infinite loop */
+	  for(;;)
+	  {
+	    printf("OS Spinning\n\n");
+	    vTaskDelay(10);
+	  }
+}
 
 /* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_spinner_Task */
-/**
-  * @brief  Function implementing the spinnerTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_spinner_Task */
-void spinner_Task(void const * argument)
-{
-  /* USER CODE BEGIN 5 */
-	unsigned char *msg = "OS Spinning\n\n";
-  /* Infinite loop */
-  for(;;)
-  {
-    HAL_UART_Transmit(&huart2, msg, sizeof(msg), 2);
-    vTaskDelay(5);
-  }
-  /* USER CODE END 5 */
-}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
@@ -467,8 +456,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
-	  unsigned char *msg = "In Error Handler";
-	  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 2);
+	  printf("In Error Handler\n");
   }
   /* USER CODE END Error_Handler_Debug */
 }
