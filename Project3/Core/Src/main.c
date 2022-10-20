@@ -40,6 +40,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define MAX_DELAY 65535
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,6 +59,7 @@ UART_HandleTypeDef huart2;
 
 QueueHandle_t waitingRoom;
 SemaphoreHandle_t doorKey;
+SemaphoreHandle_t speakingStick;
 
 TaskHandle_t h_mngTask;
 TaskHandle_t h_teller1;
@@ -65,7 +67,7 @@ TaskHandle_t h_teller2;
 TaskHandle_t h_teller3;
 TaskHandle_t h_spinner;
 
-int customer = 0;
+int cust_cnt = 0;
 
 /* USER CODE END PV */
 
@@ -80,6 +82,7 @@ static void MX_TIM2_Init(void);
 void mng_Task( void * pvParameters );
 void teller_Task( void * pvParameters );
 void spinner_Task( void * pvParameters );
+void send(char *msg);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -137,14 +140,20 @@ int main(void)
   waitingRoom = xQueueCreate(20, sizeof(int));
   if(waitingRoom == 0)
   {
-	  printf("Unable to build waiting room\n\n");
+	  printf("Unable to build waiting room\n\r");
 	  exit(1);
   }
 
   doorKey = xSemaphoreCreateMutex();
   if(doorKey == NULL)
   {
-	  printf("Key to the door was lost. Cannot open today\n\n");
+	  printf("Key to the door was lost. Cannot open today\n\r");
+	  exit(1);
+  }
+  speakingStick = xSemaphoreCreateMutex();
+  if(speakingStick == NULL)
+  {
+	  printf("No one showed up for work today\n\r");
 	  exit(1);
   }
   /* USER CODE END RTOS_QUEUES */
@@ -368,48 +377,129 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void mng_Task( void * pvParameters )
 {
-	int timeStamp;
-	uint32_t rand_int;
-	int last_cust = 0;
+	uint32_t randNum = 0;
+	int cust_clk_RT = 0;
+	int cust_clk_ST = 0;
+	char msg[50];
+	TickType_t doorClosed = 0;
+	TickType_t cust_clk_TK;
 
 	HAL_TIM_Base_Start(&htim2);
 
 	while(1)
 	{
+		HAL_RNG_GenerateRandomNumber(&hrng, &randNum);
+		cust_clk_ST = randNum & 0xFF;
 
-			HAL_RNG_GenerateRandomNumber(&hrng, &rand_int);
-			int ent_cust = ((rand_int/pow(2, 32)) * (240 - 60) + 60) * 0.6;
+		if(cust_clk_ST > 240)
+		{
+			cust_clk_ST = 240;
+		}
+		else if(cust_clk_ST < 60)
+		{
+			cust_clk_ST = 60;
+		}
 
-			if(TIM2->CNT == (last_cust + ent_cust))
-			{
-				timeStamp = TIM2->CNT;
-				xQueueSendToBack(waitingRoom, timeStamp, 5);
-			}
+		cust_clk_TK = pdMS_TO_TICKS(cust_clk_ST/0.6);
+
+		vTaskDelayUntil(&doorClosed, cust_clk_TK);
+		cust_clk_RT = TIM2->CNT * 0.6;
+		doorClosed = xTaskGetTickCount();
+
+		if(xQueueSendToBack(waitingRoom, &cust_clk_RT, 5) != pdPASS)
+		{
+			sprintf(msg, "Customer Added to the Queue\n\r");
+			send(msg);
+			cust_cnt++;
+		}
+		else
+		{
+			sprintf(msg, "Customer Can't Get In!!!\n\r");
+			send(msg);
+		}
 
 
-			if(TIM2->CNT >= 42000)
-			{
-				/* Day has ended. Time to lock the bank door */
-				TIM2->CNT = 0;
-				HAL_TIM_Base_Stop(&htim2);
+		if(TIM2->CNT >= 42000)
+		{
+			/* Day has ended. Time to lock the bank door */
+			TIM2->CNT = 0;
+			HAL_TIM_Base_Stop(&htim2);
+			sprintf(msg, "Day Has Ended. Bank Closing\n\r");
+			cust_clk_RT = 50000;
+			xQueueSendToBack(waitingRoom, &cust_clk_RT, 5);
+			xSemaphoreTake(doorKey, portMAX_DELAY);
+			vTaskDelay(portMAX_DELAY);
 
-			}
+		}
+
 	}
 }
 
 void teller_Task( void * pvParameters )
 {
-	int cust_timeStamp;
+	int cust_timeStamp_ST;
 	int tellerNum = (int) pvParameters;
+	int processTime_ST = 0;
+	char msg[50];
+	uint32_t rand_int = 0;
+	TickType_t greeting;
+	TickType_t processTime_TK;
+
 
 	while(1)
 	{
-		if(uxQueueMessagesWaiting(waitingRoom) != 0)
+		if(xQueueReceive(waitingRoom, &cust_timeStamp_ST, portMAX_DELAY) != pdPASS)
 		{
-			xQueueReceive(waitingRoom, &cust_timeStamp, 5);
-			printf("Currently with teller %d\n", tellerNum);
-			printf("The new customer time stamp: %d\n", cust_timeStamp);
+			greeting = xTaskGetTickCount();
+			sprintf(msg, "Customer %d being helped by teller %d\n\r", cust_cnt, tellerNum);
+			send(msg);
 		}
+		else
+		{
+			sprintf(msg, "No customer in line\n\r");
+			send(msg);
+		}
+
+
+		HAL_RNG_GenerateRandomNumber(&hrng, &rand_int);
+		processTime_ST = rand_int & 0x1FF;
+
+		if(processTime_ST > 480)
+		{
+			processTime_ST = 480;
+		}
+		else if(processTime_ST < 30)
+		{
+			processTime_ST = 30;
+		}
+
+		processTime_TK = pdMS_TO_TICKS(processTime_ST/0.6);
+
+		vTaskDelayUntil(&greeting, processTime_TK);
+		cust_clk_RT = TIM2->CNT * 0.6;
+
+		if(cust_timeStamp != 0 && cust_timeStamp < 50000)
+		{
+			printf("Currently with teller %d\n\r", tellerNum);
+			printf("The new customer time stamp: %d\n\r", cust_timeStamp);
+			printf("The process time: %d\n\r", processTime);
+		}
+/*		else if(cust_timeStamp >= 50000)
+		{
+			switch(tellerNum)
+			{
+			case 1:
+				vTaskDelete(teller1);
+				break;
+			case 2:
+				vTaskDelete(teller2);
+				break;
+			case 3:
+				vTaskDelete(teller3);
+				break;
+			}
+		}*/
+
 	}
 }
 void spinner_Task( void * pvParameters )
@@ -417,9 +507,16 @@ void spinner_Task( void * pvParameters )
 	  /* Infinite loop */
 	  for(;;)
 	  {
-	    printf("OS Spinning\n\n");
-	    vTaskDelay(10);
+		  printf("OS Spinning\n\r");
+		  vTaskDelay(100);
 	  }
+}
+
+void send(char *msg)
+{
+	xSemaphoreTake(speakingStick, portMAX_DELAY);
+	printf(msg);
+	xSemaphoreGive(speakingStick);
 }
 
 /* USER CODE END 4 */
