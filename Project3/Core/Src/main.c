@@ -66,6 +66,7 @@ TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart2;
 
+osThreadId spinnerTaskHandle;
 /* USER CODE BEGIN PV */
 
 QueueHandle_t waitingRoom;
@@ -76,10 +77,14 @@ TaskHandle_t h_mngTask;
 TaskHandle_t h_teller1;
 TaskHandle_t h_teller2;
 TaskHandle_t h_teller3;
-//TaskHandle_t h_uart;
+TaskHandle_t h_uart;
 //TaskHandle_t h_spinner;
 
 int cust_cnt = 0;
+int cust_helped = 0;
+int timer = 0;
+_Bool bad_QPost = 0;
+_Bool bad_QRead = 0;
 
 teller_t tell1;
 teller_t tell2;
@@ -177,12 +182,13 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
+
   /* USER CODE BEGIN RTOS_THREADS */
   xTaskCreate(mng_Task, "Manager", 128, NULL, PriorityHigh, &h_mngTask);
-  xTaskCreate(teller_Task, "Teller1", 128,(int *) 0, PriorityNormal, &h_teller1);
   xTaskCreate(teller_Task, "Teller1", 128,(int *) 1, PriorityNormal, &h_teller1);
-  xTaskCreate(teller_Task, "Teller3", 128,(int *) 2, PriorityNormal, &h_teller3);
-  //xTaskCreate(uart_Task, "uart", 128, NULL, PriorityNormal, &h_uart);
+  xTaskCreate(teller_Task, "Teller1", 128,(int *) 2, PriorityNormal, &h_teller1);
+  xTaskCreate(teller_Task, "Teller3", 128,(int *) 3, PriorityNormal, &h_teller3);
+  xTaskCreate(uart_Task, "uart", 128, NULL, PriorityNormal, &h_uart);
   //xTaskCreate(spinner_Task, "Spinning", 128, NULL, PriorityIdle, &h_spinner);
 
   /* Start scheduler */
@@ -191,7 +197,8 @@ int main(void)
 
   /* USER CODE END RTOS_THREADS */
 
-
+  /* Start scheduler */
+  osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -398,7 +405,6 @@ void mng_Task( void * pvParameters )
 {
 	uint32_t randNum = 0;
 	int cust_clk_ST = 0;
-	char msg[50];
 	TickType_t doorClosed = 0;
 	TickType_t cust_delay;
 	TIM2->CNT = 0;
@@ -426,18 +432,17 @@ void mng_Task( void * pvParameters )
 		cust_delay = pdMS_TO_TICKS(randNum/0.6);
 
 		vTaskDelayUntil(&doorClosed, cust_delay);
-		cust_clk_ST = TIM2->CNT * 0.6;
+		cust_clk_ST = timer * 0.6;
 		doorClosed = xTaskGetTickCount();
 
 		if(xQueueSendToBack(waitingRoom, &cust_clk_ST, portMAX_DELAY) != pdPASS)
 		{
-			sprintf(msg, "Customer Can't Get In!!!\n\r");
-			send(msg);
+			bad_QPost = 1;
 		}
+
 		else
 		{
-			sprintf(msg, "Customer Added to the Queue\n\r");
-			send(msg);
+			bad_QPost = 0;
 			cust_cnt++;
 		}
 
@@ -451,7 +456,7 @@ void mng_Task( void * pvParameters )
 			xQueueSendToBack(waitingRoom, &cust_clk_ST, 5);
 			//xSemaphoreTake(doorKey, portMAX_DELAY);
 			sprintf(msg, "Day Has Ended. Bank Closing\n\r");
-			send(msg);
+			//send(msg);
 			//vTaskDelay(portMAX_DELAY);
 
 		}*/
@@ -464,9 +469,6 @@ void teller_Task( void * pvParameters )
 	int cust_timeStamp_ST;
 	int tellerNum = (int) pvParameters;
 	int greeting_time_ST = 0;
-	int hr = 0;
-	int min = 0;
-	char msg[100];
 	uint32_t randNum = 0;
 	TickType_t greeting;
 	TickType_t process_delay;
@@ -476,10 +478,9 @@ void teller_Task( void * pvParameters )
 	{
 		if(xQueueReceive(waitingRoom, &cust_timeStamp_ST, portMAX_DELAY) != pdPASS)
 		{
-			sprintf(msg, "No customer for teller %d\n\r", tellerNum);
-			send(msg);
+			bad_QRead = 1;
 		}
-		/*else if(cust_timeStamp_ST == 50000)
+		else if(cust_timeStamp_ST == 50000)
 		{
 			switch(tellerNum)
 			{
@@ -493,11 +494,12 @@ void teller_Task( void * pvParameters )
 				vTaskDelete(h_teller3);
 				break;
 			}
-		}*/
+		}
 		else
 		{
+			bad_QRead = 0;
 			helpDesk[tellerNum].greeting_time = xTaskGetTickCount();
-			greeting_time_ST = TIM2->CNT * 0.6;
+			greeting_time_ST = timer * 0.6;
 			helpDesk[tellerNum].cust_timer = greeting_time_ST - cust_timeStamp_ST;
 
 			HAL_RNG_GenerateRandomNumber(&hrng, &randNum);
@@ -514,17 +516,7 @@ void teller_Task( void * pvParameters )
 
 			process_delay = pdMS_TO_TICKS(randNum/0.6);
 			vTaskDelayUntil(&greeting, process_delay);
-			format_time(TIM2->CNT*0.6, &hr, &min);
-			if(min < 10)
-			{
-				sprintf(msg, "Customer %d is satisfied at %d:0%d\n\r", cust_cnt, hr, min);
-				send(msg);
-			}
-			else
-			{
-				sprintf(msg, "Customer %d is satisfied at %d:%d\n\r", cust_cnt, hr, min);
-				send(msg);
-			}
+			cust_helped++;
 		}
 
 
@@ -536,19 +528,20 @@ void uart_Task( void * pvParameters )
 {
 	int hr = 0;
 	int min = 0;
-	int currTime_RT = TIM2->CNT;
-	int currTime_ST = currTime_RT * 0.6;
+	int currTime_R = timer;
+	int currTime_S = currTime_R * 0.6;
 
 	TickType_t lastPrint;
 
 	while(1)
 	{
-		line_cnt = uxQueueMessagesWaiting(waitingRoom);
+		currTime_R = timer;
+		currTime_S = currTime_R * 0.6;
 
-		if(currTime_RT < 42000)
+		if(currTime_R < 42000)
 		{
-			format_time(currTime_RT, &hr, &min);
-			if(min > 10)
+			format_time(currTime_S, &hr, &min);
+			if(min < 10)
 			{
 				printf("Current Time of Day: %d:0%d\n\r", hr, min);
 			}
@@ -557,22 +550,44 @@ void uart_Task( void * pvParameters )
 				printf("Current Time of Day: %d:%d\n\r", hr, min);
 			}
 
-			printf("Wall clock Time: %d\n\r", currTime_RT);
+			printf("Wall clock Time: %d\n\r", currTime_R);
 
 			printf("Customers so far: %d\n\r", cust_cnt);
-			printf("Number of customer still in line: %d", line_cnt);
+			printf("Number of customers helped: %d\n\n\n\r", cust_helped);
+
+			/*if(eTaskGetState(h_teller1) == eSuspended)
+			{
+				printf("Teller 1 is busy\n\r");
+			}
+			else if(eTaskGetState(h_teller2) == eSuspended)
+			{
+				printf("Teller 2 is busy\n\r");
+			}
+			else if(eTaskGetState(h_teller2) == eSuspended)
+			{
+				printf("Teller 3 is busy\n\r");
+			}*/
+
+			lastPrint = xTaskGetTickCount();
 
 
-
-			vTaskDelayUntil(pxPreviousWakeTime, xTimeIncrement)
+			vTaskDelayUntil(&lastPrint, pdMS_TO_TICKS(1000));
 		}
-		else
+		else if(bad_QPost)
+		{
+			printf("Customer Can't Get In!!!\n\r");
+			bad_QPost = 0;
+		}
+		else if(bad_QRead)
+		{
+			printf("No customer for teller\n\r");
+			bad_QRead = 0;
+		}
+		else if(currTime_R >= 42000)
 		{
 			printf("The day has ended");
-			while(1);
-			{
 
-			}
+			vTaskDelete(h_uart);
 		}
 	}
 
@@ -585,7 +600,7 @@ void uart_Task( void * pvParameters )
 	  {
 
 		  sprintf(msg, "OS Spinning\n\r");
-		  send(msg);
+		  //send(msg);
 		  vTaskDelay(pdMS_TO_TICKS(1000));
 	  }
 }*/
@@ -596,8 +611,6 @@ void uart_Task( void * pvParameters )
 	printf(msg);
 	xSemaphoreGive(speakingStick);
 }*/
-
-/* USER CODE END 4 */
 
 /**
   * @brief  Period elapsed callback in non blocking mode
@@ -610,7 +623,7 @@ void uart_Task( void * pvParameters )
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
-
+	timer++;
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM1) {
     HAL_IncTick();
