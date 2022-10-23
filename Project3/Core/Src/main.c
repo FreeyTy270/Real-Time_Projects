@@ -42,6 +42,7 @@ typedef struct teller{
 	TickType_t greeting_time;
 	int done_time;
 	int cust_timer;
+	int cust_helped;
 
 }teller_t;
 
@@ -74,10 +75,13 @@ TaskHandle_t h_teller1;
 TaskHandle_t h_teller2;
 TaskHandle_t h_teller3;
 TaskHandle_t h_uart;
+TaskHandle_t h_spinner;
 
 int cust_cnt = 0;
 int cust_helped = 0;
 int timer = 0;
+int help_times[200] = {0};
+int wait_times[200] = {0};
 _Bool bad_QPost = 0;
 _Bool bad_QRead = 0;
 
@@ -92,8 +96,7 @@ const char SEGMENT_MAP[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0X80,0X90};
 const char SEGMENT_SELECT[] = {0xF1,0xF2,0xF4,0xF8};
 
 
-char out_buffer[80];
-uint32_t rnd;
+int dig_buffer[4];
 
 /* USER CODE END PV */
 
@@ -107,6 +110,7 @@ static void MX_RNG_Init(void);
 void mng_Task( void * pvParameters );
 void teller_Task( void * pvParameters );
 void uart_Task( void * pvParameters );
+void spinner_Task( void * pvParameters );
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -224,7 +228,7 @@ int main(void)
   xTaskCreate(teller_Task, "Teller1", 128,(int *) 2, PriorityNormal, &h_teller1);
   xTaskCreate(teller_Task, "Teller3", 128,(int *) 3, PriorityNormal, &h_teller3);
   xTaskCreate(uart_Task, "uart", 128, NULL, PriorityNormal, &h_uart);
-  //xTaskCreate(spinner_Task, "Spinning", 128, NULL, PriorityIdle, &h_spinner);
+  xTaskCreate(spinner_Task, "Spinning", 128, NULL, PriorityIdle, &h_spinner);
 
   /* Start scheduler */
 
@@ -470,16 +474,9 @@ static void MX_GPIO_Init(void)
 void mng_Task( void * pvParameters )
 {
 	uint32_t randNum = 0;
-	int cust_clk_ST = 0;
+	int cust_clk_S = 0;
 	TickType_t doorClosed = 0;
 	TickType_t cust_delay;
-	TIM2->CNT = 0;
-
-	helpDesk[0] = tell1;
-	helpDesk[1] = tell2;
-	helpDesk[2] = tell3;
-
-	HAL_TIM_Base_Start(&htim2);
 
 	while(1)
 	{
@@ -498,10 +495,10 @@ void mng_Task( void * pvParameters )
 		cust_delay = pdMS_TO_TICKS(randNum/0.6);
 
 		vTaskDelayUntil(&doorClosed, cust_delay);
-		cust_clk_ST = timer * 0.6;
+		cust_clk_S = timer * 0.6;
 		doorClosed = xTaskGetTickCount();
 
-		if(xQueueSendToBack(waitingRoom, &cust_clk_ST, portMAX_DELAY) != pdPASS)
+		if(xQueueSendToBack(waitingRoom, &cust_clk_S, portMAX_DELAY) != pdPASS)
 		{
 			bad_QPost = 1;
 		}
@@ -515,8 +512,8 @@ void mng_Task( void * pvParameters )
 
 		if(timer >= 42000)
 		{
-			cust_clk_ST = 50000;
-			xQueueSendToBack(waitingRoom, &cust_clk_ST, 5);
+			cust_clk_S = 50000;
+			xQueueSendToBack(waitingRoom, &cust_clk_S, 5);
 			//xSemaphoreTake(doorKey, portMAX_DELAY);
 			vTaskDelete(h_mngTask);
 
@@ -527,21 +524,36 @@ void mng_Task( void * pvParameters )
 
 void teller_Task( void * pvParameters )
 {
-	int cust_timeStamp_ST;
+	int cust_timeStamp_S;
 	int tellerNum = (int) pvParameters;
-	int greeting_time_ST = 0;
+	int greeting_time_S = 0;
 	uint32_t randNum = 0;
 	TickType_t greeting;
 	TickType_t process_delay;
 
+	teller_t currTeller;
+
+	switch(tellerNum)
+	{
+	case 1:
+		currTeller = tell1;
+		break;
+	case 2:
+		currTeller = tell2;
+		break;
+	case 3:
+		currTeller = tell3;
+		break;
+	}
+
 
 	while(1)
 	{
-		if(xQueueReceive(waitingRoom, &cust_timeStamp_ST, portMAX_DELAY) != pdPASS)
+		if(xQueueReceive(waitingRoom, &cust_timeStamp_S, portMAX_DELAY) != pdPASS)
 		{
 			bad_QRead = 1;
 		}
-		else if(cust_timeStamp_ST == 50000)
+		else if(cust_timeStamp_S == 50000 && uxQueueMessagesWaiting(waitingRoom) == 0)
 		{
 			switch(tellerNum)
 			{
@@ -559,9 +571,9 @@ void teller_Task( void * pvParameters )
 		else
 		{
 			//bad_QRead = 0;
-			helpDesk[tellerNum].greeting_time = xTaskGetTickCount();
-			greeting_time_ST = timer * 0.6;
-			helpDesk[tellerNum].cust_timer = greeting_time_ST - cust_timeStamp_ST;
+			currTeller.greeting_time = xTaskGetTickCount();
+			greeting_time_S = timer * 0.6;
+			wait_times[cust_cnt] = greeting_time_S - cust_timeStamp_S;
 
 			HAL_RNG_GenerateRandomNumber(&hrng, &randNum);
 			randNum = randNum & 0x1FF;
@@ -575,9 +587,10 @@ void teller_Task( void * pvParameters )
 				randNum = 30;
 			}
 
+			help_times[cust_cnt] = randNum;
 			process_delay = pdMS_TO_TICKS(randNum/0.6);
 			vTaskDelayUntil(&greeting, process_delay);
-			cust_helped++;
+			currTeller.cust_helped++;
 		}
 
 
@@ -610,8 +623,6 @@ void uart_Task( void * pvParameters )
 			{
 				printf("Current Time of Day: %d:%d\n\r", hr, min);
 			}
-
-			printf("Wall clock Time: %d\n\r", currTime_R);
 
 			printf("Customers so far: %d\n\r", cust_cnt);
 			printf("Number of customers helped: %d\n\n\n\r", cust_helped);
@@ -652,18 +663,21 @@ void uart_Task( void * pvParameters )
 	}
 
 }
-/*void spinner_Task( void * pvParameters )
+void spinner_Task( void * pvParameters )
 {
-	  char msg[50];
 
 	  for(;;)
 	  {
 
-		  sprintf(msg, "OS Spinning\n\r");
-		  //send(msg);
-		  vTaskDelay(pdMS_TO_TICKS(1000));
+		  unsigned long cust_cnt = uxQueueMessagesWaiting(waitingRoom);
+		  dig_ret(cust_cnt, dig_buffer);
+
+		  WriteNumberToSegment(1, dig_buffer[0]);
+		  WriteNumberToSegment(2, dig_buffer[1]);
+		  WriteNumberToSegment(3, dig_buffer[2]);
+		  WriteNumberToSegment(4, dig_buffer[3]);
 	  }
-}*/
+}
 
 /*void send(char *msg)
 {
