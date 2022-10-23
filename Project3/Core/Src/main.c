@@ -17,6 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <numbers.h>
 #include "main.h"
 #include "cmsis_os.h"
 
@@ -33,7 +34,6 @@
 #include "string.h"
 #include "math.h"
 
-#include "time_calc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,7 +51,6 @@ teller_t helpDesk[3];
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define MAX_DELAY 65535
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -62,11 +61,8 @@ teller_t helpDesk[3];
 /* Private variables ---------------------------------------------------------*/
 RNG_HandleTypeDef hrng;
 
-TIM_HandleTypeDef htim2;
-
 UART_HandleTypeDef huart2;
 
-osThreadId spinnerTaskHandle;
 /* USER CODE BEGIN PV */
 
 QueueHandle_t waitingRoom;
@@ -78,7 +74,6 @@ TaskHandle_t h_teller1;
 TaskHandle_t h_teller2;
 TaskHandle_t h_teller3;
 TaskHandle_t h_uart;
-//TaskHandle_t h_spinner;
 
 int cust_cnt = 0;
 int cust_helped = 0;
@@ -90,6 +85,15 @@ teller_t tell1;
 teller_t tell2;
 teller_t tell3;
 
+/* Segment byte maps for numbers 0 to 9 */
+
+const char SEGMENT_MAP[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0X80,0X90};
+/* Byte maps to select digit 1 to 4 */
+const char SEGMENT_SELECT[] = {0xF1,0xF2,0xF4,0xF8};
+
+
+char out_buffer[80];
+uint32_t rnd;
 
 /* USER CODE END PV */
 
@@ -98,19 +102,50 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_RNG_Init(void);
-static void MX_TIM2_Init(void);
 
 /* USER CODE BEGIN PFP */
 void mng_Task( void * pvParameters );
 void teller_Task( void * pvParameters );
 void uart_Task( void * pvParameters );
-//void spinner_Task( void * pvParameters );
-void send(char *msg);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void shiftOut(uint8_t val)
+{
+      for(int ii=0x80; ii; ii>>=1) {
+    	  HAL_GPIO_WritePin(SHLD_D7_SEG7_Clock_GPIO_Port,SHLD_D7_SEG7_Clock_Pin, GPIO_PIN_RESET);    // clear clock pin
+      		if(ii & val)						                                                     // if this bit in `value` is set
+      			HAL_GPIO_WritePin(SHLD_D8_SEG7_Data_GPIO_Port, SHLD_D8_SEG7_Data_Pin,GPIO_PIN_SET);  //   set it in shift register
+      		else
+      			HAL_GPIO_WritePin(SHLD_D8_SEG7_Data_GPIO_Port, SHLD_D8_SEG7_Data_Pin,GPIO_PIN_RESET); 	//   else clear it
 
+      		HAL_GPIO_WritePin(SHLD_D7_SEG7_Clock_GPIO_Port,SHLD_D7_SEG7_Clock_Pin, GPIO_PIN_SET);       // set clock pin
+      	}
+}
+
+/* Write a decimal number between 0 and 9 to one of the 4 digits of the display */
+void WriteNumberToSegment(int Segment, int Value)
+{
+  HAL_GPIO_WritePin(SHLD_D4_SEG7_Latch_GPIO_Port, SHLD_D4_SEG7_Latch_Pin, GPIO_PIN_RESET);
+  shiftOut(SEGMENT_MAP[Value]);
+  shiftOut(SEGMENT_SELECT[Segment] );
+  HAL_GPIO_WritePin(SHLD_D4_SEG7_Latch_GPIO_Port, SHLD_D4_SEG7_Latch_Pin, GPIO_PIN_SET);
+}
+
+void dig_ret(int val, int *digBuf)
+{
+	int i = 3;
+	while(val > 0)
+	{
+
+		int mod = val % 10;  //split last digit from number
+		digBuf[i] = mod; //print the digit.
+		i--;
+
+		val = val / 10;    //divide num by 10. num /= 10 also a valid one
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -288,51 +323,6 @@ static void MX_RNG_Init(void)
 }
 
 /**
-  * @brief TIM2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM2_Init(void)
-{
-
-  /* USER CODE BEGIN TIM2_Init 0 */
-
-  /* USER CODE END TIM2_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM2_Init 1 */
-
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 20000-1;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4294967295;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM2_Init 2 */
-
-  /* USER CODE END TIM2_Init 2 */
-
-}
-
-/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -383,7 +373,11 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, SHLD_D13_Pin|SHLD_D12_Pin|SHLD_D11_Pin|SHLD_D7_SEG7_Clock_Pin
+                          |SHLD_D8_SEG7_Data_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, SHLD_D3_Pin|SHLD_D4_SEG7_Latch_Pin|SHLD_D10_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -391,12 +385,84 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : SHLD_A5_Pin SHLD_A4_Pin */
+  GPIO_InitStruct.Pin = SHLD_A5_Pin|SHLD_A4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : SHLD_A0_Pin SHLD_D2_Pin */
+  GPIO_InitStruct.Pin = SHLD_A0_Pin|SHLD_D2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : SHLD_A1_Pin SHLD_A2_Pin */
+  GPIO_InitStruct.Pin = SHLD_A1_Pin|SHLD_A2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : SHLD_D13_Pin SHLD_D12_Pin SHLD_D11_Pin SHLD_D7_SEG7_Clock_Pin */
+  GPIO_InitStruct.Pin = SHLD_D13_Pin|SHLD_D12_Pin|SHLD_D11_Pin|SHLD_D7_SEG7_Clock_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SHLD_A3_Pin */
+  GPIO_InitStruct.Pin = SHLD_A3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(SHLD_A3_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : SHLD_D6_Pin SHLD_D5_Pin */
+  GPIO_InitStruct.Pin = SHLD_D6_Pin|SHLD_D5_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SHLD_D9_Pin */
+  GPIO_InitStruct.Pin = SHLD_D9_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SHLD_D9_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SHLD_D8_SEG7_Data_Pin */
+  GPIO_InitStruct.Pin = SHLD_D8_SEG7_Data_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+  HAL_GPIO_Init(SHLD_D8_SEG7_Data_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SHLD_D3_Pin */
+  GPIO_InitStruct.Pin = SHLD_D3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(SHLD_D3_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SHLD_D4_SEG7_Latch_Pin */
+  GPIO_InitStruct.Pin = SHLD_D4_SEG7_Latch_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(SHLD_D4_SEG7_Latch_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SHLD_D10_Pin */
+  GPIO_InitStruct.Pin = SHLD_D10_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(SHLD_D10_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : SHLD_D15_Pin SHLD_D14_Pin */
+  GPIO_InitStruct.Pin = SHLD_D15_Pin|SHLD_D14_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
@@ -442,24 +508,19 @@ void mng_Task( void * pvParameters )
 
 		else
 		{
-			bad_QPost = 0;
+			//bad_QPost = 0;
 			cust_cnt++;
 		}
 
 
-		/*if(TIM2->CNT >= 42000)
+		if(timer >= 42000)
 		{
-			 Day has ended. Time to lock the bank door
-			TIM2->CNT = 0;
-			HAL_TIM_Base_Stop(&htim2);
 			cust_clk_ST = 50000;
 			xQueueSendToBack(waitingRoom, &cust_clk_ST, 5);
 			//xSemaphoreTake(doorKey, portMAX_DELAY);
-			sprintf(msg, "Day Has Ended. Bank Closing\n\r");
-			//send(msg);
-			//vTaskDelay(portMAX_DELAY);
+			vTaskDelete(h_mngTask);
 
-		}*/
+		}
 
 	}
 }
@@ -497,7 +558,7 @@ void teller_Task( void * pvParameters )
 		}
 		else
 		{
-			bad_QRead = 0;
+			//bad_QRead = 0;
 			helpDesk[tellerNum].greeting_time = xTaskGetTickCount();
 			greeting_time_ST = timer * 0.6;
 			helpDesk[tellerNum].cust_timer = greeting_time_ST - cust_timeStamp_ST;
@@ -568,10 +629,6 @@ void uart_Task( void * pvParameters )
 				printf("Teller 3 is busy\n\r");
 			}*/
 
-			lastPrint = xTaskGetTickCount();
-
-
-			vTaskDelayUntil(&lastPrint, pdMS_TO_TICKS(1000));
 		}
 		else if(bad_QPost)
 		{
@@ -583,12 +640,15 @@ void uart_Task( void * pvParameters )
 			printf("No customer for teller\n\r");
 			bad_QRead = 0;
 		}
-		else if(currTime_R >= 42000)
+		else if(currTime_R >= 42000 && currTime_R <= 43000)
 		{
-			printf("The day has ended");
+			printf("The day has ended\n\n\r");
 
 			vTaskDelete(h_uart);
 		}
+
+		lastPrint = xTaskGetTickCount();
+		vTaskDelayUntil(&lastPrint, pdMS_TO_TICKS(1000));
 	}
 
 }

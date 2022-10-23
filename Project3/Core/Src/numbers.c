@@ -5,7 +5,7 @@
  *      Author: Ty Freeman
  */
 
-#include "time_calc.h"
+#include <numbers.h>
 
 void format_time(int time_since, int *hr, int *min)
 {
