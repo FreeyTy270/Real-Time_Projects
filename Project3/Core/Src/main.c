@@ -115,41 +115,6 @@ void spinner_Task( void * pvParameters );
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void shiftOut(uint8_t val)
-{
-      for(int ii=0x80; ii; ii>>=1) {
-    	  HAL_GPIO_WritePin(SHLD_D7_SEG7_Clock_GPIO_Port,SHLD_D7_SEG7_Clock_Pin, GPIO_PIN_RESET);    // clear clock pin
-      		if(ii & val)						                                                     // if this bit in `value` is set
-      			HAL_GPIO_WritePin(SHLD_D8_SEG7_Data_GPIO_Port, SHLD_D8_SEG7_Data_Pin,GPIO_PIN_SET);  //   set it in shift register
-      		else
-      			HAL_GPIO_WritePin(SHLD_D8_SEG7_Data_GPIO_Port, SHLD_D8_SEG7_Data_Pin,GPIO_PIN_RESET); 	//   else clear it
-
-      		HAL_GPIO_WritePin(SHLD_D7_SEG7_Clock_GPIO_Port,SHLD_D7_SEG7_Clock_Pin, GPIO_PIN_SET);       // set clock pin
-      	}
-}
-
-/* Write a decimal number between 0 and 9 to one of the 4 digits of the display */
-void WriteNumberToSegment(int Segment, int Value)
-{
-  HAL_GPIO_WritePin(SHLD_D4_SEG7_Latch_GPIO_Port, SHLD_D4_SEG7_Latch_Pin, GPIO_PIN_RESET);
-  shiftOut(SEGMENT_MAP[Value]);
-  shiftOut(SEGMENT_SELECT[Segment] );
-  HAL_GPIO_WritePin(SHLD_D4_SEG7_Latch_GPIO_Port, SHLD_D4_SEG7_Latch_Pin, GPIO_PIN_SET);
-}
-
-void dig_ret(int val, int *digBuf)
-{
-	int i = 3;
-	while(val > 0)
-	{
-
-		int mod = val % 10;  //split last digit from number
-		digBuf[i] = mod; //print the digit.
-		i--;
-
-		val = val / 10;    //divide num by 10. num /= 10 also a valid one
-	}
-}
 /* USER CODE END 0 */
 
 /**
@@ -473,26 +438,15 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void mng_Task( void * pvParameters )
 {
-	uint32_t randNum = 0;
 	int cust_clk_S = 0;
+	int cust_delay;
 	TickType_t doorClosed = 0;
-	TickType_t cust_delay;
+	TickType_t cust_delay_T;
 
 	while(1)
 	{
-		HAL_RNG_GenerateRandomNumber(&hrng, &randNum);
-		randNum = randNum & 0xFF;
-
-		if(randNum > 240)
-		{
-			randNum = 240;
-		}
-		else if(randNum < 60)
-		{
-			randNum = 60;
-		}
-
-		cust_delay = pdMS_TO_TICKS(randNum/0.6);
+		cust_delay = num_gen(mngr);
+		cust_delay_T = pdMS_TO_TICKS(cust_delay/0.6);
 
 		vTaskDelayUntil(&doorClosed, cust_delay);
 		cust_clk_S = timer * 0.6;
@@ -527,9 +481,10 @@ void teller_Task( void * pvParameters )
 	int cust_timeStamp_S;
 	int tellerNum = (int) pvParameters;
 	int greeting_time_S = 0;
+	int process_delay;
 	uint32_t randNum = 0;
 	TickType_t greeting;
-	TickType_t process_delay;
+	TickType_t process_delay_T;
 
 	teller_t currTeller;
 
@@ -574,22 +529,10 @@ void teller_Task( void * pvParameters )
 			currTeller.greeting_time = xTaskGetTickCount();
 			greeting_time_S = timer * 0.6;
 			wait_times[cust_cnt] = greeting_time_S - cust_timeStamp_S;
-
-			HAL_RNG_GenerateRandomNumber(&hrng, &randNum);
-			randNum = randNum & 0x1FF;
-
-			if(randNum > 480)
-			{
-				randNum = 480;
-			}
-			else if(randNum < 30)
-			{
-				randNum = 30;
-			}
-
-			help_times[cust_cnt] = randNum;
-			process_delay = pdMS_TO_TICKS(randNum/0.6);
-			vTaskDelayUntil(&greeting, process_delay);
+			process_delay = num_gen(process);
+			help_times[cust_cnt] = process_delay;
+			process_delay_T = pdMS_TO_TICKS(process_delay/0.6);
+			vTaskDelayUntil(&greeting, process_delay_T);
 			currTeller.cust_helped++;
 		}
 
@@ -665,10 +608,11 @@ void uart_Task( void * pvParameters )
 }
 void spinner_Task( void * pvParameters )
 {
+	TickType_t sixty_ticks = pdMS_TO_TICKS(60);
 
 	  for(;;)
 	  {
-
+		  TickType_t prev = xTaskGetTickCount();
 		  unsigned long cust_cnt = uxQueueMessagesWaiting(waitingRoom);
 		  dig_ret(cust_cnt, dig_buffer);
 
@@ -676,6 +620,7 @@ void spinner_Task( void * pvParameters )
 		  WriteNumberToSegment(2, dig_buffer[1]);
 		  WriteNumberToSegment(3, dig_buffer[2]);
 		  WriteNumberToSegment(4, dig_buffer[3]);
+		  vTaskDelayUntil(&prev, sixty_ticks);
 	  }
 }
 
