@@ -40,9 +40,12 @@
 /* USER CODE BEGIN PTD */
 typedef struct teller{
 	TickType_t greeting_time;
+	int break_start;
+	int break_cnt;
 	int done_time;
 	int cust_timer;
 	int cust_helped;
+	int break_times[20];
 
 }teller_t;
 
@@ -80,6 +83,7 @@ TaskHandle_t h_spinner;
 int cust_cnt = 0;
 int cust_helped = 0;
 int timer = 0;
+int line_len = 0;
 int help_times[200] = {0};
 int wait_times[200] = {0};
 _Bool bad_QPost = 0;
@@ -88,13 +92,6 @@ _Bool bad_QRead = 0;
 teller_t tell1;
 teller_t tell2;
 teller_t tell3;
-
-/* Segment byte maps for numbers 0 to 9 */
-
-const char SEGMENT_MAP[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0X80,0X90};
-/* Byte maps to select digit 1 to 4 */
-const char SEGMENT_SELECT[] = {0xF1,0xF2,0xF4,0xF8};
-
 
 int dig_buffer[4];
 
@@ -146,7 +143,6 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_RNG_Init();
-  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -440,17 +436,17 @@ void mng_Task( void * pvParameters )
 {
 	int cust_clk_S = 0;
 	int cust_delay;
-	TickType_t doorClosed = 0;
+	TickType_t cust_clk_T = 0;
 	TickType_t cust_delay_T;
 
 	while(1)
 	{
-		cust_delay = num_gen(mngr);
-		cust_delay_T = pdMS_TO_TICKS(cust_delay/0.6);
+		cust_delay = num_gen(mngr); //Generate time until new customer enters
+		cust_delay_T = pdMS_TO_TICKS(cust_delay/0.6); //Convert to ticks
 
-		vTaskDelayUntil(&doorClosed, cust_delay);
-		cust_clk_S = timer * 0.6;
-		doorClosed = xTaskGetTickCount();
+		vTaskDelayUntil(&cust_clk_T, cust_delay_T); // Suspend until new customer enters
+		cust_clk_S = timer * 0.6; //Grab and convert customer entrance to simulated time
+		cust_clk_T = xTaskGetTickCount(); //Update latest customer entrance in ticks
 
 		if(xQueueSendToBack(waitingRoom, &cust_clk_S, portMAX_DELAY) != pdPASS)
 		{
@@ -459,17 +455,22 @@ void mng_Task( void * pvParameters )
 
 		else
 		{
-			//bad_QPost = 0;
+			bad_QPost = 0;
 			cust_cnt++;
+			int currLen = uxQueueMessagesWaiting(waitingRoom);
+			if(currLen > line_len)
+			{
+				line_len = currLen;
+			}
 		}
 
 
-		if(timer >= 42000)
+		if(timer >= 42000) //If end of the day
 		{
-			cust_clk_S = 50000;
-			xQueueSendToBack(waitingRoom, &cust_clk_S, 5);
+			cust_clk_S = 50000; //Signal tellers they can go home
+			xQueueSendToBack(waitingRoom, &cust_clk_S, portMAX_DELAY);
 			//xSemaphoreTake(doorKey, portMAX_DELAY);
-			vTaskDelete(h_mngTask);
+			vTaskDelete(h_mngTask); //Manager goes home
 
 		}
 
@@ -482,13 +483,16 @@ void teller_Task( void * pvParameters )
 	int tellerNum = (int) pvParameters;
 	int greeting_time_S = 0;
 	int process_delay;
-	uint32_t randNum = 0;
-	TickType_t greeting;
+	int new_break_start;
+	int break_dur;
+
+	TickType_t break_start_T;
 	TickType_t process_delay_T;
+	TickType_t break_dur_T;
 
 	teller_t currTeller;
 
-	switch(tellerNum)
+	switch(tellerNum) //Assign currect struct to the current task
 	{
 	case 1:
 		currTeller = tell1;
@@ -504,11 +508,60 @@ void teller_Task( void * pvParameters )
 
 	while(1)
 	{
-		if(xQueueReceive(waitingRoom, &cust_timeStamp_S, portMAX_DELAY) != pdPASS)
+		new_break_start = num_gen(break_start); //Generate how long to wait until next break
+
+		/* Check buttons to see if any tellers need to be put on break */
+		if(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_RESET)
+		{
+				tell1.break_start = timer;
+				tell1.break_cnt++;
+				vTaskSuspend(h_teller1);
+		}
+		else if(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_SET)
+		{
+			vTaskResume(h_teller1);
+		}
+		else if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
+		{
+				tell2.break_start = timer;
+				tell2.break_cnt++;
+				vTaskSuspend(h_teller2);
+		}
+		else if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_SET)
+		{
+			vTaskResume(h_teller2);
+		}
+		else if(HAL_GPIO_ReadPin(SHLD_A3_GPIO_Port, SHLD_A3_Pin)==GPIO_PIN_RESET)
+		{
+				tell3.break_start = timer;
+				tell3.break_cnt++;
+				vTaskSuspend(h_teller3);
+		}
+		else if(HAL_GPIO_ReadPin(SHLD_A3_GPIO_Port, SHLD_A3_Pin)==GPIO_PIN_SET)
+		{
+			vTaskResume(h_teller3);
+		}
+		/*else if(timer == (new_break_start + currTeller.break_start)) //Break due to random break scheduling
+		{
+
+			currTeller.break_cnt++; //Increment teller break count
+			currTeller.break_start = timer * 0.6; //Update break time. In simulated time
+
+			break_dur = num_gen(break_len); //Generated random break length
+
+			Convert new break start value and break duration to tick values before suspending task for full duration
+			break_start_T = pdMS_TO_TICKS(currTeller.break_start);
+			break_dur_T = pdMS_TO_TICKS(break_dur/0.6);
+
+			vTaskDelayUntil(&break_start_T, break_dur_T);
+
+		}*/
+		/*If no break then perform teller duties */
+		if(xQueueReceive(waitingRoom, &cust_timeStamp_S, portMAX_DELAY) != pdPASS) //Check if reading from Queue was successful
 		{
 			bad_QRead = 1;
 		}
-		else if(cust_timeStamp_S == 50000 && uxQueueMessagesWaiting(waitingRoom) == 0)
+		else if(cust_timeStamp_S == 50000 && uxQueueMessagesWaiting(waitingRoom) == 0) //If day ended and line empty tellers get to go home
 		{
 			switch(tellerNum)
 			{
@@ -523,17 +576,17 @@ void teller_Task( void * pvParameters )
 				break;
 			}
 		}
-		else
+		else //Normal function
 		{
 			//bad_QRead = 0;
-			currTeller.greeting_time = xTaskGetTickCount();
-			greeting_time_S = timer * 0.6;
-			wait_times[cust_cnt] = greeting_time_S - cust_timeStamp_S;
-			process_delay = num_gen(process);
-			help_times[cust_cnt] = process_delay;
-			process_delay_T = pdMS_TO_TICKS(process_delay/0.6);
-			vTaskDelayUntil(&greeting, process_delay_T);
-			currTeller.cust_helped++;
+			currTeller.greeting_time = xTaskGetTickCount(); //Start of customer processing
+			greeting_time_S = timer * 0.6; //Grab simulated time of day that customer processing began
+			wait_times[cust_cnt] = greeting_time_S - cust_timeStamp_S; //Save the amount of time the cust waited in line
+			process_delay = num_gen(process); //Generate duration of customer processing
+			help_times[cust_cnt] = process_delay; //Save process duration
+			process_delay_T = pdMS_TO_TICKS(process_delay/0.6); //Convert to ticks
+			vTaskDelayUntil(&currTeller.greeting_time, process_delay_T); //Suspend
+			currTeller.cust_helped++; //Customer helped
 		}
 
 
@@ -541,6 +594,7 @@ void teller_Task( void * pvParameters )
 	}
 }
 
+/* Task to handle all printing functions so there is never conflict over shared resource*/
 void uart_Task( void * pvParameters )
 {
 	int hr = 0;
@@ -550,14 +604,21 @@ void uart_Task( void * pvParameters )
 
 	TickType_t lastPrint;
 
+	stats_t iQueue;
+	stats_t wTeller;
+	stats_t t1Breaks;
+	stats_t t2Breaks;
+	stats_t t3Breaks;
+
+
 	while(1)
 	{
-		currTime_R = timer;
-		currTime_S = currTime_R * 0.6;
+		currTime_R = timer; //Current real time
+		currTime_S = currTime_R * 0.6; //Current simulated time
 
-		if(currTime_R < 42000)
+		if(currTime_R < 42000) //Normal day operation
 		{
-			format_time(currTime_S, &hr, &min);
+			format_time(currTime_S, &hr, &min); //Current simulated time is in seconds since opening. Format time into 12-hr clock
 			if(min < 10)
 			{
 				printf("Current Time of Day: %d:0%d\n\r", hr, min);
@@ -570,42 +631,48 @@ void uart_Task( void * pvParameters )
 			printf("Customers so far: %d\n\r", cust_cnt);
 			printf("Number of customers helped: %d\n\n\n\r", cust_helped);
 
-			/*if(eTaskGetState(h_teller1) == eSuspended)
-			{
-				printf("Teller 1 is busy\n\r");
-			}
-			else if(eTaskGetState(h_teller2) == eSuspended)
-			{
-				printf("Teller 2 is busy\n\r");
-			}
-			else if(eTaskGetState(h_teller2) == eSuspended)
-			{
-				printf("Teller 3 is busy\n\r");
-			}*/
 
 		}
-		else if(bad_QPost)
+		else if(bad_QPost)//If manager couldn't put customer in queue
 		{
 			printf("Customer Can't Get In!!!\n\r");
 			bad_QPost = 0;
 		}
-		else if(bad_QRead)
+		else if(bad_QRead)//If teller couldn't pull customer from line
 		{
 			printf("No customer for teller\n\r");
 			bad_QRead = 0;
 		}
-		else if(currTime_R >= 42000 && currTime_R <= 43000)
+		else if(currTime_R >= 42000 && uxQueueMessagesWaiting(waitingRoom) == 0)//If end of day
 		{
-			printf("The day has ended\n\n\r");
+			iQueue = calcs(wait_times, 0);
+			wTeller = calcs(help_times, 0);
+			t1Breaks = calcs(tell1.break_times, 1);
+			t2Breaks = calcs(tell2.break_times, 1);
+			t3Breaks = calcs(tell3.break_times, 1);
 
+			printf("The day has ended\n\n\r");
+			printf("Total customers today: %d\n\r", cust_cnt);
+			printf("\tAverage wait in line: %d\tMax wait in line: %d\n\r", iQueue.ave, iQueue.max);
+			printf("\tAverage time with Teller: %d\tMax time with Teller: %d\n\r", wTeller.ave, wTeller.max);
+			printf("Teller 1 helped: %d customers\n", tell1.cust_helped);
+			printf("\tTook %d breaks. Longest: %d\tAve duration: %d\n\r", tell1.break_cnt, t1Breaks.max, t1Breaks.ave);
+			printf("Teller 2 helped: %d customers\n", tell2.cust_helped);
+			printf("\tTook %d breaks. Longest: %d\tAve duration: %d\n\r", tell2.break_cnt, t2Breaks.max, t2Breaks.ave);
+			printf("Teller 3 helped: %d customers\n", tell3.cust_helped);
+			printf("\tTook %d breaks. Longest: %d\tAve duration: %d\n\r", tell3.break_cnt, t3Breaks.max, t3Breaks.ave);
+			printf("Max length of the line: %d\n\r", line_len);
 			vTaskDelete(h_uart);
 		}
 
+		/* Controls frequency of print statements */
 		lastPrint = xTaskGetTickCount();
 		vTaskDelayUntil(&lastPrint, pdMS_TO_TICKS(1000));
 	}
 
 }
+
+/* Idle task in charge of posting number of customers in line to the 7-seg display */
 void spinner_Task( void * pvParameters )
 {
 	TickType_t sixty_ticks = pdMS_TO_TICKS(60);

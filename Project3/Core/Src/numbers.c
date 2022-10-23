@@ -6,11 +6,19 @@
  */
 
 #include <numbers.h>
-#include "stm32l476xx.h"
+#include "stm32l4xx_hal.h"
 
 extern RNG_HandleTypeDef hrng;
 
-int num_gen(int reason)
+
+/* Segment byte maps for numbers 0 to 9 */
+
+const char SEGMENT_MAP[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0X80,0X90};
+/* Byte maps to select digit 1 to 4 */
+const char SEGMENT_SELECT[] = {0xF1,0xF2,0xF4,0xF8};
+
+
+int num_gen(reas_t reason)
 {
 	uint32_t randNum;
 	int mask;
@@ -21,7 +29,8 @@ int num_gen(int reason)
 	HAL_RNG_GenerateRandomNumber(&hrng, &randNum);
 	switch(reason)
 	{
-	case mngr:
+	case (mngr):
+	case (break_len):
 		mask = 0xFF;
 		min = 60;
 		max = 240;
@@ -31,7 +40,7 @@ int num_gen(int reason)
 		min = 30;
 		max = 480;
 		break;
-	case off:
+	case break_start:
 		mask = 0xFFF;
 		min = 1800;
 		max = 3600;
@@ -85,7 +94,7 @@ void WriteNumberToSegment(int Segment, int Value)
   HAL_GPIO_WritePin(SHLD_D4_SEG7_Latch_GPIO_Port, SHLD_D4_SEG7_Latch_Pin, GPIO_PIN_SET);
 }
 
-void dig_ret(int val, int *digBuf)
+void dig_ret(unsigned long val, int *digBuf)
 {
 	int i = 3;
 	while(val > 0)
@@ -97,4 +106,44 @@ void dig_ret(int val, int *digBuf)
 
 		val = val / 10;    //divide num by 10. num /= 10 also a valid one
 	}
+}
+
+stats_t calcs(int *timeBuf, _Bool teller)
+{
+	stats_t stat;
+	int len = 200;
+	int size;
+	int sum = 0;
+
+	stat.max = timeBuf[0];
+
+	if(teller)
+	{
+		size = 20;
+	}
+	else
+	{
+		size = 200;
+	}
+
+	for(int i = 0; i < size; i++)
+	{
+		if(timeBuf[i] > 0)
+		{
+			if(timeBuf[i] > stat.max)
+			{
+				stat.max = timeBuf[i];
+			}
+			sum += timeBuf[i];
+		}
+		else
+		{
+			len--;
+		}
+	}
+
+	stat.ave = sum/len;
+
+	return stat;
+
 }
