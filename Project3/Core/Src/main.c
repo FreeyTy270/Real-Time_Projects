@@ -185,9 +185,9 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   xTaskCreate(mng_Task, "Manager", 128, NULL, PriorityHigh, &h_mngTask);
-  xTaskCreate(teller_Task, "Teller1", 128,(int *) 1, PriorityNormal, &h_teller1);
-  xTaskCreate(teller_Task, "Teller1", 128,(int *) 2, PriorityNormal, &h_teller1);
-  xTaskCreate(teller_Task, "Teller3", 128,(int *) 3, PriorityNormal, &h_teller3);
+  xTaskCreate(teller_Task, "Teller1", 128,(void *) 1, PriorityNormal, &h_teller1);
+  xTaskCreate(teller_Task, "Teller1", 128,(void *) 2, PriorityNormal, &h_teller1);
+  xTaskCreate(teller_Task, "Teller3", 128,(void *) 3, PriorityNormal, &h_teller3);
   xTaskCreate(uart_Task, "uart", 128, NULL, PriorityNormal, &h_uart);
   xTaskCreate(spinner_Task, "Spinning", 128, NULL, PriorityIdle, &h_spinner);
 
@@ -480,7 +480,7 @@ void mng_Task( void * pvParameters )
 void teller_Task( void * pvParameters )
 {
 	int cust_timeStamp_S;
-	int tellerNum = (int) pvParameters;
+	int tellerNum = (int ) pvParameters;
 	int greeting_time_S = 0;
 	int process_delay;
 	int new_break_start;
@@ -511,7 +511,7 @@ void teller_Task( void * pvParameters )
 		new_break_start = num_gen(break_start); //Generate how long to wait until next break
 
 		/* Check buttons to see if any tellers need to be put on break */
-		if(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_RESET)
+		/*if(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_RESET)
 		{
 				tell1.break_start = timer;
 				tell1.break_cnt++;
@@ -541,7 +541,7 @@ void teller_Task( void * pvParameters )
 		{
 			vTaskResume(h_teller3);
 		}
-		/*else if(timer == (new_break_start + currTeller.break_start)) //Break due to random break scheduling
+		else if(timer == (new_break_start + currTeller.break_start)) //Break due to random break scheduling
 		{
 
 			currTeller.break_cnt++; //Increment teller break count
@@ -675,7 +675,7 @@ void uart_Task( void * pvParameters )
 /* Idle task in charge of posting number of customers in line to the 7-seg display */
 void spinner_Task( void * pvParameters )
 {
-	TickType_t sixty_ticks = pdMS_TO_TICKS(60);
+	TickType_t ten_ticks = pdMS_TO_TICKS(10);
 
 	  for(;;)
 	  {
@@ -684,10 +684,16 @@ void spinner_Task( void * pvParameters )
 		  dig_ret(cust_cnt, dig_buffer);
 
 		  WriteNumberToSegment(1, dig_buffer[0]);
+		  vTaskDelayUntil(&prev, ten_ticks);
+		  prev = xTaskGetTickCount();
 		  WriteNumberToSegment(2, dig_buffer[1]);
+		  vTaskDelayUntil(&prev, ten_ticks);
+		  prev = xTaskGetTickCount();
 		  WriteNumberToSegment(3, dig_buffer[2]);
+		  vTaskDelayUntil(&prev, ten_ticks);
+		  prev = xTaskGetTickCount();
 		  WriteNumberToSegment(4, dig_buffer[3]);
-		  vTaskDelayUntil(&prev, sixty_ticks);
+		  vTaskDelayUntil(&prev, ten_ticks);
 	  }
 }
 
