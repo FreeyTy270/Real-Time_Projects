@@ -96,13 +96,13 @@ void WriteNumberToSegment(int Segment, int Value)
 
 void dig_ret(unsigned long val, int *digBuf)
 {
-	int i = 3;
+	int i = 0;
 	while(val > 0)
 	{
 
 		int mod = val % 10;  //split last digit from number
 		digBuf[i] = mod; //print the digit.
-		i--;
+		i++;
 
 		val = val / 10;    //divide num by 10. num /= 10 also a valid one
 	}
