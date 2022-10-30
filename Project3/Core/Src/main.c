@@ -49,7 +49,6 @@ typedef struct teller{
 
 }teller_t;
 
-teller_t helpDesk[3];
 
 /* USER CODE END PTD */
 
@@ -440,6 +439,7 @@ void mng_Task( void * pvParameters )
 {
 	int cust_clk_S = 0;
 	int cust_delay;
+	int new_break_time = 0;
 	TickType_t cust_clk_T = 0;
 	TickType_t cust_delay_T;
 
@@ -468,7 +468,6 @@ void mng_Task( void * pvParameters )
 			}
 		}
 
-
 		if(timer >= 42000) //If end of the day
 		{
 			cust_clk_S = 50000; //Signal tellers they can go home
@@ -489,6 +488,12 @@ void teller_Task( void * pvParameters )
 	int process_delay;
 	int new_break_start;
 	int break_dur;
+
+	int currTime = 0;
+	int i1 = 0;
+	int i2 = 0;
+	int i3 = 0;
+	_Bool b_flg = 0;
 
 	TickType_t break_start_T;
 	TickType_t process_delay_T;
@@ -513,44 +518,61 @@ void teller_Task( void * pvParameters )
 
 	while(1)
 	{
-		new_break_start = num_gen(break_start); //Generate how long to wait until next break
+		if(!b_flg)
+		{
+			new_break_start = num_gen(break_start); //Generate how long to wait until next break
+			b_flg = 1;
+		}
 
 		/* Check buttons to see if any tellers need to be put on break */
-		if(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_RESET)
+		while(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_RESET)
 		{
 			vTaskSuspend(h_teller1);
-		}
-		else if(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_SET)
-		{
-			vTaskResume(h_teller1);
 			tell1.break_start = timer * 0.6;
 			tell1.break_cnt++;
+
+			if(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_SET)
+			{
+				currTime = timer * 0.6;
+				tell1.break_times[i1] = currTime - tell1.break_start;
+				i1++;
+				vTaskResume(h_teller1);
+
+			}
 		}
 
-		else if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
+		while(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
 		{
 			vTaskSuspend(h_teller2);
-		}
-		else if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_SET)
-		{
-			vTaskResume(h_teller2);
 			tell2.break_start = timer * 0.6;
 			tell2.break_cnt++;
+
+			if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_SET)
+			{
+				currTime = timer * 0.6;
+				tell2.break_times[i2] = currTime - tell2.break_start;
+				i2++;
+				vTaskResume(h_teller2);
+			}
 		}
 
-		else if(HAL_GPIO_ReadPin(SHLD_A3_GPIO_Port, SHLD_A3_Pin)==GPIO_PIN_RESET)
+		while(HAL_GPIO_ReadPin(SHLD_A3_GPIO_Port, SHLD_A3_Pin)==GPIO_PIN_RESET)
 		{
 			vTaskSuspend(h_teller3);
-		}
-		else if(HAL_GPIO_ReadPin(SHLD_A3_GPIO_Port, SHLD_A3_Pin)==GPIO_PIN_SET)
-		{
-			vTaskResume(h_teller3);
 			tell3.break_start = timer * 0.6;
 			tell3.break_cnt++;
-		}
-		else if(timer <= (new_break_start + currTeller->break_start + 20)/0.6 && timer >= (new_break_start + currTeller->break_start)/0.6) //Break due to random break scheduling
-		{
 
+			if(HAL_GPIO_ReadPin(SHLD_A3_GPIO_Port, SHLD_A3_Pin)==GPIO_PIN_SET)
+			{
+				currTime = timer * 0.6;
+				tell3.break_times[i3] = currTime - tell3.break_start;
+				i3++;
+				vTaskResume(h_teller3);
+			}
+		}
+		if(timer <= (new_break_start + currTeller->break_start + 20)/0.6 && timer >= (new_break_start + currTeller->break_start)/0.6) //Break due to random break scheduling
+		{
+			b_flg = 0;
 			currTeller->break_cnt++; //Increment teller break count
 			currTeller->break_start = timer * 0.6; //Update break time. In simulated time
 
@@ -610,7 +632,6 @@ void uart_Task( void * pvParameters )
 	int min = 0;
 	int currTime_R = timer;
 	int currTime_S = currTime_R * 0.6;
-	int idle_time = 0;
 
 
 	TickType_t lastPrint;
@@ -663,8 +684,6 @@ void uart_Task( void * pvParameters )
 			t2Breaks = calcs(tell2.break_times, 1);
 			t3Breaks = calcs(tell3.break_times, 1);
 
-			idle_time = spinner/timer * 100;
-
 			printf("\t--------- The day has ended ---------\n\n\r");
 			printf("Total customers today: %d\n\r", cust_cnt);
 			printf("\tAverage wait in line: %d Sec\tMax wait in line: %d Sec\n\r", iQueue.ave, iQueue.max);
@@ -676,7 +695,7 @@ void uart_Task( void * pvParameters )
 			printf("Teller 3 helped: %d customers\n", tell3.cust_helped);
 			printf("\tTook %d breaks. Longest: %d Sec\tAve duration: %d Sec\n\r", tell3.break_cnt, t3Breaks.max, t3Breaks.ave);
 			printf("Max length of the line: %d\n\r", line_len);
-			printf("Percent of Total time Spent in idle task: %d%%\n\n\r", idle_time);
+			printf("Percent of Total time Spent in idle task: %d\n\n\r", spinner);
 			vTaskDelete(h_uart);
 		}
 
@@ -690,40 +709,29 @@ void uart_Task( void * pvParameters )
 /* Idle task in charge of posting number of customers in line to the 7-seg display */
 void spinner_Task( void * pvParameters )
 {
-	TickType_t disp_ticks = pdMS_TO_TICKS(5);
+	TickType_t disp_ticks = pdMS_TO_TICKS(50);
 
 	  for(;;)
 	  {
 		  TickType_t prev = xTaskGetTickCount();
 		  unsigned long curr_cust_cnt = uxQueueMessagesWaiting(waitingRoom);
-		  if(curr_cust_cnt > 0)
-		  {
-			  dig_ret(curr_cust_cnt, dig_buffer);
-		  }
-		  else
-		  {
-			  dig_buffer[0] = 0;
-			  dig_buffer[1] = 0;
-			  dig_buffer[2] = 0;
-			  dig_buffer[3] = 0;
-		  }
 
 		  if(timer >= 42000)
 		  {
 			  vTaskDelete(h_spinner);
 		  }
 
-		  WriteNumberToSegment(3, dig_buffer[0]);
+		  WriteNumberToSegment(3, curr_cust_cnt);
 		  vTaskDelayUntil(&prev, disp_ticks);
-		  prev = xTaskGetTickCount();
-		  WriteNumberToSegment(2, dig_buffer[1]);
+		  //prev = xTaskGetTickCount();
+/*		  WriteNumberToSegment(2, dig_buffer[1]);
 		  vTaskDelayUntil(&prev, disp_ticks);
 		  prev = xTaskGetTickCount();
 		  WriteNumberToSegment(1, dig_buffer[2]);
 		  vTaskDelayUntil(&prev, disp_ticks);
 		  prev = xTaskGetTickCount();
 		  WriteNumberToSegment(0, dig_buffer[3]);
-		  vTaskDelayUntil(&prev, disp_ticks);
+		  vTaskDelayUntil(&prev, disp_ticks);*/
 	  }
 }
 
