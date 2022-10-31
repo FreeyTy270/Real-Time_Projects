@@ -8,9 +8,6 @@
 #ifndef INC_SERVO_H_
 #define INC_SERVO_H_
 
-TaskHandle_t npc;
-TaskHandle_t player;
-
 
 void NPC_Task(void * pvParameters);
 void Player_Task(void * pvParameters);

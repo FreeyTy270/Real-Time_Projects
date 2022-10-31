@@ -36,7 +36,16 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+enum  Priority{
+  PriorityIdle = 0,          ///< priority: idle (lowest)
+  PriorityLow,                    ///< priority: low
+  PriorityBelowNormal,          ///< priority: below normal
+  PriorityNormal,          ///< priority: normal (default)
+  PriorityAboveNormal,          ///< priority: above normal
+  PriorityHigh,          ///< priority: high
+  PriorityRealtime,          ///< priority: realtime (highest)
+  PriorityError =  0x84        ///< system cannot determine priority or thread has illegal priority
+};
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -74,7 +83,40 @@ void Error_Handler(void);
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-
+#define SHLD_A5_Pin GPIO_PIN_0
+#define SHLD_A5_GPIO_Port GPIOC
+#define SHLD_A4_Pin GPIO_PIN_1
+#define SHLD_A4_GPIO_Port GPIOC
+#define SHLD_A0_Pin GPIO_PIN_0
+#define SHLD_A0_GPIO_Port GPIOA
+#define SHLD_A1_Pin GPIO_PIN_1
+#define SHLD_A1_GPIO_Port GPIOA
+#define SHLD_A2_Pin GPIO_PIN_4
+#define SHLD_A2_GPIO_Port GPIOA
+#define SHLD_D13_Pin GPIO_PIN_5
+#define SHLD_D13_GPIO_Port GPIOA
+#define SHLD_D12_Pin GPIO_PIN_6
+#define SHLD_D12_GPIO_Port GPIOA
+#define SHLD_D11_Pin GPIO_PIN_7
+#define SHLD_D11_GPIO_Port GPIOA
+#define SHLD_A3_Pin GPIO_PIN_0
+#define SHLD_A3_GPIO_Port GPIOB
+#define SHLD_D6_Pin GPIO_PIN_10
+#define SHLD_D6_GPIO_Port GPIOB
+#define SHLD_D9_Pin GPIO_PIN_7
+#define SHLD_D9_GPIO_Port GPIOC
+#define SHLD_D2_Pin GPIO_PIN_10
+#define SHLD_D2_GPIO_Port GPIOA
+#define SHLD_D3_Pin GPIO_PIN_3
+#define SHLD_D3_GPIO_Port GPIOB
+#define SHLD_D5_Pin GPIO_PIN_4
+#define SHLD_D5_GPIO_Port GPIOB
+#define SHLD_D10_Pin GPIO_PIN_6
+#define SHLD_D10_GPIO_Port GPIOB
+#define SHLD_D15_Pin GPIO_PIN_8
+#define SHLD_D15_GPIO_Port GPIOB
+#define SHLD_D14_Pin GPIO_PIN_9
+#define SHLD_D14_GPIO_Port GPIOB
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
