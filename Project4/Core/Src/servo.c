@@ -22,7 +22,7 @@
 extern RNG_HandleTypeDef hrng;
 extern TIM_HandleTypeDef htim3;
 
-static const int position[] = {25, 36, 52, 68, 84, 100};
+static const int position[] = {50, 60, 70, 80, 90};
 
 void NPC_Task(void * pvParameters)
 {
@@ -31,7 +31,7 @@ void NPC_Task(void * pvParameters)
 
 	TickType_t lastwake = 0;
 
-	TickType_t freq = pdMS_TO_TICKS(500);
+	TickType_t freq = pdMS_TO_TICKS(50);
 
 	while(1)
 	{
@@ -62,6 +62,6 @@ void Player_Task(void * pvParameters)
 {
 	while(1)
 	{
-
+		vTaskDelay(500);
 	}
 }
