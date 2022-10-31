@@ -31,7 +31,7 @@ void NPC_Task(void * pvParameters)
 
 	TickType_t lastwake = 0;
 
-	TickType_t freq = pdMS_TO_TICKS(50);
+	TickType_t freq = pdMS_TO_TICKS(100);
 
 	while(1)
 	{
@@ -60,8 +60,42 @@ void NPC_Task(void * pvParameters)
 
 void Player_Task(void * pvParameters)
 {
+	uint32_t rndNum = 0;
+	int pos = 0;
+
+	TickType_t lastwake = 0;
+
+	TickType_t freq = pdMS_TO_TICKS(500);
+
+	int i = 0;
+
 	while(1)
 	{
-		vTaskDelay(500);
+		HAL_RNG_GenerateRandomNumber(&hrng, &rndNum);
+
+		/*pos = rndNum & 0x7;
+
+		if(pos > 5)
+		{
+			pos = 5;
+		}
+		else if(pos < 0)
+		{
+			pos = 0;
+		}*/
+
+		TIM3->CCR2 = position[i];
+
+		lastwake = xTaskGetTickCount();
+		vTaskDelayUntil(&lastwake, freq);
+
+		if(i <= 4)
+		{
+			i++;
+		}
+		else
+		{
+			i = 0;
+		}
 	}
 }
