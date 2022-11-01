@@ -74,10 +74,13 @@ UART_HandleTypeDef huart2;
 TaskHandle_t game_mngr;
 TaskHandle_t npc;
 TaskHandle_t player;
+TaskHandle_t spinner;
 
 extern servo_t servoN;
 extern servo_t servoP;
 
+int timer = 0;
+int score = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -89,6 +92,8 @@ static void MX_TIM3_Init(void);
 
 /* USER CODE BEGIN PFP */
 void Game_Task(void * pvParameters);
+void spinner_Task( void * pvParameters );
+int num_gen(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -154,6 +159,7 @@ int main(void)
   xTaskCreate(NPC_Task, "NPC_Servo", 1024, NULL, PriorityNormal, &npc);
   xTaskCreate(Player_Task, "Player_servo", 1024, NULL, PriorityNormal, &player);
   xTaskCreate(Game_Task, "G_Mngr", 1024, NULL, PriorityHigh, &game_mngr);
+  xTaskCreate(spinner_Task, "Spinner", 256, NULL, PriorityLow, &spinner);
 
   vTaskStartScheduler();
   /* USER CODE END RTOS_THREADS */
@@ -463,7 +469,19 @@ void Game_Task(void * pvParameters)
 	int range = 0;
 	int step = 0;
 
+	int round_cnt = 0;
+	int score = 0;
+	uint32_t rndNum = 0;
+	int go_time = 0;
+
+
+	TickType_t lastwake = 0;
+
+
+	printf("\n\n\n\r");
 	servo_init();
+	servoN.currState = calibratingL;
+	servoP.currState = stopped;
 
 	while(1)
 	{
@@ -471,8 +489,6 @@ void Game_Task(void * pvParameters)
 		if(!cal)
 		{
 			vTaskDelay(pdMS_TO_TICKS(50));
-			servoN.currState = calibratingL;
-			servoP.currState = stopped;
 
 			if(servoN.cal && servoP.cal)
 			{
@@ -480,28 +496,87 @@ void Game_Task(void * pvParameters)
 
 				range = servoN.position[pos5] - servoN.position[pos0];
 				step = range / 6;
-				for(int i = 1; i < 6; i++)
+				for(int i = 1; i < 5; i++)
 				{
-					servoP.position[i] = servoP.position[i-1] + step;
+					servoN.position[i] = servoN.position[i-1] + step;
 				}
 
 				range = servoP.position[pos5] - servoP.position[pos0];
 				step = range / 6;
-				for(int i = 1; i < 6; i++)
+				for(int i = 1; i < 5; i++)
 				{
 					servoP.position[i] = servoP.position[i-1] + step;
 				}
 
+				printf("Calibration Finished!\n\n\r\t----- Press Button 2 to Begin -----\n\n\r");
 			}
 		}
 		else
 		{
-
+			if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
+			{
+				lastwake = xTaskGetTickCount();
+				vTaskDelayUntil(&lastwake, debounce);
+				if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
+				{
+					printf("Game Started: ROUND 1\n\n\r");
+					start = 1;
+				}
+			}
 		}
-		vTaskDelay(500);
+
+		if(start && servoN.round_cnt < 6)
+		{
+			go_time = num_gen();
+		}
 	}
 }
 
+void spinner_Task( void * pvParameters )
+{
+	TickType_t disp_ticks = pdMS_TO_TICKS(50);
+
+	  for(;;)
+	  {
+		  TickType_t prev = xTaskGetTickCount();
+
+		  WriteNumberToSegment(3, score);
+		  vTaskDelayUntil(&prev, disp_ticks);
+		  //prev = xTaskGetTickCount();
+/*		  WriteNumberToSegment(2, dig_buffer[1]);
+		  vTaskDelayUntil(&prev, disp_ticks);
+		  prev = xTaskGetTickCount();
+		  WriteNumberToSegment(1, dig_buffer[2]);
+		  vTaskDelayUntil(&prev, disp_ticks);
+		  prev = xTaskGetTickCount();
+		  WriteNumberToSegment(0, dig_buffer[3]);
+		  vTaskDelayUntil(&prev, disp_ticks);*/
+	  }
+}
+
+int num_gen(void)
+{
+	uint32_t randNum;
+	int mask = 0xFFF;
+	int max = 4000;
+	int min = 1000;
+
+
+	HAL_RNG_GenerateRandomNumber(&hrng, &randNum);
+
+	randNum = randNum & mask;
+
+	if(randNum > max)
+	{
+		randNum = max;
+	}
+	else if(randNum < min)
+	{
+		randNum = min;
+	}
+
+	return randNum;
+}
 /* USER CODE END 4 */
 
 /**
@@ -519,6 +594,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM1) {
     HAL_IncTick();
+    timer++;
   }
   /* USER CODE BEGIN Callback 1 */
 
