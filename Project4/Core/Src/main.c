@@ -32,6 +32,8 @@
 #include "event_groups.h"
 #include "string.h"
 #include "math.h"
+
+#include "shld_def.h"
 #include "servo.h"
 /* USER CODE END Includes */
 
@@ -67,9 +69,15 @@ RNG_HandleTypeDef hrng;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
+
 /* USER CODE BEGIN PV */
+TaskHandle_t game_mngr;
 TaskHandle_t npc;
 TaskHandle_t player;
+
+extern servo_t servoN;
+extern servo_t servoP;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -80,6 +88,7 @@ static void MX_RNG_Init(void);
 static void MX_TIM3_Init(void);
 
 /* USER CODE BEGIN PFP */
+void Game_Task(void * pvParameters);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -144,6 +153,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   xTaskCreate(NPC_Task, "NPC_Servo", 1024, NULL, PriorityNormal, &npc);
   xTaskCreate(Player_Task, "Player_servo", 1024, NULL, PriorityNormal, &player);
+  xTaskCreate(Game_Task, "G_Mngr", 1024, NULL, PriorityHigh, &game_mngr);
 
   vTaskStartScheduler();
   /* USER CODE END RTOS_THREADS */
@@ -363,6 +373,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
+  /* USER CODE BEGIN 4 */
+
   /*Configure GPIO pins : SHLD_A5_Pin SHLD_A4_Pin */
   GPIO_InitStruct.Pin = SHLD_A5_Pin|SHLD_A4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
@@ -444,7 +456,49 @@ static void MX_GPIO_Init(void)
 
 }
 
-/* USER CODE BEGIN 4 */
+
+void Game_Task(void * pvParameters)
+{
+	_Bool cal = 0;
+	int range = 0;
+	int step = 0;
+
+	while(1)
+	{
+		if(!cal)
+		{
+			servo_init();
+			vTaskDelay(pdMS_TO_TICKS(50));
+			servoN.currState = calibratingL;
+			servoP.currState = stopped;
+
+			if(servoN.cal && servoP.cal)
+			{
+				cal = 1;
+
+				range = servoN.position[pos5] - servoN.position[pos0];
+				step = range / 6;
+				for(int i = 1; i < 6; i++)
+				{
+					servoP.position[i] = servoP.position[i-1] + step;
+				}
+
+				range = servoP.position[pos5] - servoP.position[pos0];
+				step = range / 6;
+				for(int i = 1; i < 6; i++)
+				{
+					servoP.position[i] = servoP.position[i-1] + step;
+				}
+
+			}
+		}
+		else
+		{
+
+		}
+		vTaskDelay(500);
+	}
+}
 
 /* USER CODE END 4 */
 
