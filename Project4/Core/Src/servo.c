@@ -24,8 +24,12 @@
 extern RNG_HandleTypeDef hrng;
 extern TIM_HandleTypeDef htim3;
 
-servo_t servoN;
-servo_t servoP;
+
+int npc_range[6] = {42, 0, 0, 0, 0, 0};
+int player_range[6] = {42, 0, 0, 0, 0, 0};
+
+servo_t servoN = {pos0, stopped, 0, npc_range};
+servo_t servoP = {pos0, stopped, 0, player_range};
 
 
 void servo_init()
@@ -41,8 +45,6 @@ void NPC_Task(void * pvParameters)
 {
 	uint32_t rndNum = 0;
 	int pos = 0;
-	int range = 0;
-	int steps = 0;
 
 	TickType_t lastwake = 0;
 	TickType_t stop_wait = pdMS_TO_TICKS(100);
@@ -117,7 +119,7 @@ void NPC_Task(void * pvParameters)
 				pos = 0;
 			}
 
-			TIM3->CCR1 = position[pos];
+			TIM3->CCR1 = servoN.position[pos];
 
 			lastwake = xTaskGetTickCount();
 			vTaskDelayUntil(&lastwake, freq);

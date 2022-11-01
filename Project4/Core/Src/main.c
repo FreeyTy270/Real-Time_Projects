@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
+//#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -463,11 +463,13 @@ void Game_Task(void * pvParameters)
 	int range = 0;
 	int step = 0;
 
+	servo_init();
+
 	while(1)
 	{
+
 		if(!cal)
 		{
-			servo_init();
 			vTaskDelay(pdMS_TO_TICKS(50));
 			servoN.currState = calibratingL;
 			servoP.currState = stopped;

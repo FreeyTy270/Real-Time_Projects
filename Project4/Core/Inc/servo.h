@@ -8,6 +8,9 @@
 #ifndef INC_SERVO_H_
 #define INC_SERVO_H_
 
+extern int npc_range[];
+extern int player_range[];
+
 enum servo_state{
 	calibratingL,
 	calibratingR,
@@ -25,10 +28,10 @@ enum servo_pos{
 };
 
 typedef struct servo{
-	int currPos = 0;
-	int currState = stopped;
-	_Bool cal = 0;
-	int position[6] = {42, 0, 0, 0, 0, 0};
+	int currPos;
+	int currState;
+	_Bool cal;
+	int *position;
 }servo_t;
 
 void servo_init(void);
