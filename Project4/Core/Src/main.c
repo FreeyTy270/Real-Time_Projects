@@ -74,13 +74,19 @@ UART_HandleTypeDef huart2;
 TaskHandle_t game_mngr;
 TaskHandle_t npc;
 TaskHandle_t player;
-TaskHandle_t spinner;
+TaskHandle_t spinner; // 7-seg display
+TaskHandle_t npc_init;
+TaskHandle_t player_init;
 
-extern servo_t servoN;
-extern servo_t servoP;
+extern servo_t servoN; // Computer servo
+extern servo_t servoP; // Player servo
 
 int timer = 0;
-int score = 0;
+int score = 0; // Player Score
+
+_Bool start = 0; // Player Started Game Flag
+_Bool go = 0;
+int taskMade = 0; // Records which initialization functions have been created
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -93,7 +99,9 @@ static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void Game_Task(void * pvParameters);
 void spinner_Task( void * pvParameters );
-int num_gen(void);
+
+void shiftOut(uint8_t val);
+void WriteNumberToSegment(int Segment, int Value);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -156,10 +164,8 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* USER CODE BEGIN RTOS_THREADS */
-  xTaskCreate(NPC_Task, "NPC_Servo", 1024, NULL, PriorityNormal, &npc);
-  xTaskCreate(Player_Task, "Player_servo", 1024, NULL, PriorityNormal, &player);
-  xTaskCreate(Game_Task, "G_Mngr", 1024, NULL, PriorityHigh, &game_mngr);
-  xTaskCreate(spinner_Task, "Spinner", 256, NULL, PriorityLow, &spinner);
+  xTaskCreate(Game_Task, "G_Mngr", 1024, NULL, PriorityHigh, &game_mngr); //Create game manager task
+  xTaskCreate(spinner_Task, "Spinner", 256, NULL, PriorityLow, &spinner); //Create Task in charge of 7-seg
 
   vTaskStartScheduler();
   /* USER CODE END RTOS_THREADS */
@@ -465,9 +471,9 @@ static void MX_GPIO_Init(void)
 
 void Game_Task(void * pvParameters)
 {
-	_Bool cal = 0;
-	int range = 0;
-	int step = 0;
+	_Bool cal = 0; // System calibration flag
+	int range = 0; // Maximum CCR value - Minimum CCR value
+	int step = 0; // Step size between PWM CCR values for 6 equal spacings
 
 	int round_cnt = 0;
 	int score = 0;
@@ -476,22 +482,36 @@ void Game_Task(void * pvParameters)
 
 
 	TickType_t lastwake = 0;
+	TickType_t debounce = pdMS_TO_TICKS(70);
 
-
-	printf("\n\n\n\r");
-	servoN.currState = calibratingL;
-	servoP.currState = stopped;
+	servoN.currState = calibratingL; // Prime servos for calibration
+	servoP.currState = stopped; // The computer servo is calibrated first so the player servo begins in the stopped state
 
 	while(1)
 	{
 
 		if(!cal)
 		{
-			vTaskDelay(pdMS_TO_TICKS(50));
-
-			if(servoN.cal && servoP.cal)
+			if(!servoN.cal && !servoP.cal && taskMade == 0) // If neither servo has been calibrated and no task has been created
 			{
-				cal = 1;
+				xTaskCreate(calibration_Task, "n_init", 512, (int *) 1, PriorityNormal, &npc_init); // Create computer initialization task
+				taskMade += 1; // Signal task has been created
+			}
+			else if(servoN.cal && !servoP.cal && taskMade == 1) // Computer servo has been calibrated but only one task has been created
+			{
+				servoP.currState = calibratingL;
+				xTaskCreate(calibration_Task, "p_init", 512, (int *) 2, PriorityNormal, &player_init); // Create player initialization task
+				taskMade += 1; // Signal another task has been created
+			}
+
+			if(servoN.cal && servoP.cal) // Both servos have been calibrated
+			{
+				cal = 1; // System has been calibrated
+
+				/*This block of code calculates
+				 * the other positions between the
+				 * max and min CCR values that
+				 * were found during calibration */
 
 				range = servoN.position[pos5] - servoN.position[pos0];
 				step = range / 6;
@@ -507,29 +527,28 @@ void Game_Task(void * pvParameters)
 					servoP.position[i] = servoP.position[i-1] + step;
 				}
 
-				printf("Calibration Finished!\n\n\r\t----- Press Button 2 to Begin -----\n\n\r");
+				printf("Calibration Finished!\n\n\r\t----- Press Button 2 to Begin -----\n\n\r"); // Print message for player
+
 			}
 		}
 		else
 		{
-			if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
+			if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET && taskMade < 4)
 			{
 				lastwake = xTaskGetTickCount();
-				vTaskDelayUntil(&lastwake, debounce);
-				if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
+				vTaskDelayUntil(&lastwake, debounce); // Wait for the button to settle
+				if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET) // If button still pressed
 				{
-					printf("Game Started: ROUND 1\n\n\r");
-					start = 1;
+					xTaskCreate(NPC_Task, "NPC_Servo", 1024, NULL, PriorityNormal, &npc);
+					xTaskCreate(Player_Task, "Player_servo", 1024, NULL, PriorityNormal, &player);
+					taskMade += 2; // All 4 tasks have been created
+					printf("Game Started: ROUND 1\n\n\r"); // Begin playeing
+					start = 1; // Signal game started
 				}
 			}
 		}
 
-		if(start && servoN.round_cnt < 6)
-		{
-			//go_time = num_gen();
-
-
-		}
+		vTaskDelay(pdMS_TO_TICKS(50));
 	}
 }
 
@@ -555,28 +574,27 @@ void spinner_Task( void * pvParameters )
 	  }
 }
 
-int num_gen(void)
+void shiftOut(uint8_t val)
 {
-	uint32_t randNum;
-	int mask = 0xFFF;
-	int max = 4000;
-	int min = 1000;
+  for(int ii=0x80; ii; ii>>=1)
+  {
+	  HAL_GPIO_WritePin(SHLD_D7_SEG7_Clock_GPIO_Port,SHLD_D7_SEG7_Clock_Pin, GPIO_PIN_RESET);    // clear clock pin
+		if(ii & val)						                                                     // if this bit in `value` is set
+			HAL_GPIO_WritePin(SHLD_D8_SEG7_Data_GPIO_Port, SHLD_D8_SEG7_Data_Pin,GPIO_PIN_SET);  //   set it in shift register
+		else
+			HAL_GPIO_WritePin(SHLD_D8_SEG7_Data_GPIO_Port, SHLD_D8_SEG7_Data_Pin,GPIO_PIN_RESET); 	//   else clear it
 
-
-	HAL_RNG_GenerateRandomNumber(&hrng, &randNum);
-
-	randNum = randNum & mask;
-
-	if(randNum > max)
-	{
-		randNum = max;
+		HAL_GPIO_WritePin(SHLD_D7_SEG7_Clock_GPIO_Port,SHLD_D7_SEG7_Clock_Pin, GPIO_PIN_SET);       // set clock pin
 	}
-	else if(randNum < min)
-	{
-		randNum = min;
-	}
+}
 
-	return randNum;
+/* Write a decimal number between 0 and 9 to one of the 4 digits of the display */
+void WriteNumberToSegment(int Segment, int Value)
+{
+  HAL_GPIO_WritePin(SHLD_D4_SEG7_Latch_GPIO_Port, SHLD_D4_SEG7_Latch_Pin, GPIO_PIN_RESET);
+  shiftOut(SEGMENT_MAP[Value]);
+  shiftOut(SEGMENT_SELECT[Segment] );
+  HAL_GPIO_WritePin(SHLD_D4_SEG7_Latch_GPIO_Port, SHLD_D4_SEG7_Latch_Pin, GPIO_PIN_SET);
 }
 /* USER CODE END 4 */
 

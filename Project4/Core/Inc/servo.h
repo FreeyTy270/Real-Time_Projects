@@ -8,9 +8,6 @@
 #ifndef INC_SERVO_H_
 #define INC_SERVO_H_
 
-_Bool start = 0;
-_Bool go = 0;
-
 
 enum servo_state{
 	calibratingL,
@@ -37,6 +34,7 @@ typedef struct servo{
 }servo_t;
 
 void servo_init(void);
+void calibration_Task(void * pvParameters);
 void NPC_Task(void * pvParameters);
 void Player_Task(void * pvParameters);
 
