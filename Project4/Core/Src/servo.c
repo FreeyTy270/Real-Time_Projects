@@ -145,69 +145,43 @@ void Player_Task(void * pvParameters)
 
 	while(1)
 	{
-		if(!servoP.cal && servoP.currState != stopped)
-		{
-			if(!prnt_flg)
-			{
-				printf("CAL2\n\r");
-				prnt_flg = 1;
-			}
 
-			while(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_RESET)
-			{
-				TIM3->CCR2 -= 5;
-				lastwake = xTaskGetTickCount();
-				vTaskDelayUntil(&lastwake, stop_wait);
-			}
-
-			while(HAL_GPIO_ReadPin(SHLD_A3_GPIO_Port, SHLD_A3_Pin)==GPIO_PIN_RESET)
-			{
-				TIM3->CCR2 += 5;
-				lastwake = xTaskGetTickCount();
-				vTaskDelayUntil(&lastwake, stop_wait);
-			}
-
-			if(servoP.currState == calibratingL)
-			{
-				if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
-				{
-					lastwake = xTaskGetTickCount();
-					vTaskDelayUntil(&lastwake, debounce);
-					if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
-					{
-						servoP.position[pos0] = TIM3->CCR2;
-						printf("Low Measurement Captured\n\r");
-						servoP.currState = calibratingR;
-					}
-				}
-			}
-			else if(servoP.currState == calibratingR)
-			{
-				if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
-				{
-					lastwake = xTaskGetTickCount();
-					vTaskDelayUntil(&lastwake, debounce);
-					if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
-					{
-						servoP.position[pos5] = TIM3->CCR2;
-						TIM3->CCR2 = servoP.position[pos0];
-						printf("High Measurement Captured\n\r");
-						servoP.currState = stopped;
-						servoP.cal = 1;
-						vTaskSuspend(player);
-					}
-				}
-			}
-		}
 	}
 }
 
-
 void calibration_Task(void * pvParameters)
 {
-	if(!servoP.cal && servoP.currState != stopped)
+	int pos = 0;
+	int serNum = (int) pvParameters;
+	static _Bool prnt_flg = 0;
+	TickType_t lastwake = 0;
+	TickType_t stop_wait = pdMS_TO_TICKS(100);
+	TickType_t debounce = pdMS_TO_TICKS(70);
+
+	servo_t *currServo = NULL;
+	uint32_t *currReg = NULL;
+
+	switch(serNum)
 	{
-		if(!prnt_flg)
+	case 1:
+		currServo = &servoN;
+		currReg = TIM3->CCR1;
+		break;
+	case 2:
+		currServo = &servoP;
+		currReg = TIM3->CCR2;
+	}
+
+	servo_init();
+
+	if(!currServo->cal && currServo->currState == calibratingL || currServo->currState == calibratingR)
+	{
+		if(!prnt_flg && serNum == 1)
+		{
+			printf("CAL1\n\r");
+			prnt_flg = 1;
+		}
+		if(!prnt_flg && serNum == 2)
 		{
 			printf("CAL2\n\r");
 			prnt_flg = 1;
@@ -215,19 +189,19 @@ void calibration_Task(void * pvParameters)
 
 		while(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_RESET)
 		{
-			TIM3->CCR2 -= 5;
+			currReg -= 5;
 			lastwake = xTaskGetTickCount();
 			vTaskDelayUntil(&lastwake, stop_wait);
 		}
 
 		while(HAL_GPIO_ReadPin(SHLD_A3_GPIO_Port, SHLD_A3_Pin)==GPIO_PIN_RESET)
 		{
-			TIM3->CCR2 += 5;
+			currReg += 5;
 			lastwake = xTaskGetTickCount();
 			vTaskDelayUntil(&lastwake, stop_wait);
 		}
 
-		if(servoP.currState == calibratingL)
+		if(currServo->currState == calibratingL)
 		{
 			if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
 			{
@@ -235,13 +209,13 @@ void calibration_Task(void * pvParameters)
 				vTaskDelayUntil(&lastwake, debounce);
 				if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
 				{
-					servoP.position[pos0] = TIM3->CCR2;
+					currServo->position[pos0] = currReg;
 					printf("Low Measurement Captured\n\r");
-					servoP.currState = calibratingR;
+					currServo->currState = calibratingR;
 				}
 			}
 		}
-		else if(servoP.currState == calibratingR)
+		else if(currServo->currState == calibratingR)
 		{
 			if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
 			{
@@ -249,11 +223,11 @@ void calibration_Task(void * pvParameters)
 				vTaskDelayUntil(&lastwake, debounce);
 				if(HAL_GPIO_ReadPin(SHLD_A2_GPIO_Port, SHLD_A2_Pin)==GPIO_PIN_RESET)
 				{
-					servoP.position[pos5] = TIM3->CCR2;
-					TIM3->CCR2 = servoP.position[pos0];
+					currServo->position[pos5] = currReg;
+					currReg = currServo->position[pos0];
 					printf("High Measurement Captured\n\r");
-					servoP.currState = stopped;
-					servoP.cal = 1;
+					currServo->currState = stopped;
+					currServo->cal = 1;
 					vTaskSuspend(player);
 				}
 			}

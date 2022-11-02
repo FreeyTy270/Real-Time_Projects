@@ -479,7 +479,6 @@ void Game_Task(void * pvParameters)
 
 
 	printf("\n\n\n\r");
-	servo_init();
 	servoN.currState = calibratingL;
 	servoP.currState = stopped;
 
@@ -527,7 +526,9 @@ void Game_Task(void * pvParameters)
 
 		if(start && servoN.round_cnt < 6)
 		{
-			go_time = num_gen();
+			//go_time = num_gen();
+
+
 		}
 	}
 }
