@@ -13,6 +13,8 @@ enum servo_state{
 	calibratingL,
 	calibratingR,
 	gaming,
+	moving,
+	paused,
 	stopped
 };
 

@@ -552,10 +552,17 @@ void Game_Task(void * pvParameters)
 				tot_score += score;
 				flgs.matched[servoN.round_cnt] = 1;
 			}
-			else if(servoN.currPos != servoP.currPos && flgs.start && !flgs.matched[servoN.round_cnt - 1])
+			else if(servoN.currState == moving && flgs.start && !flgs.matched[servoN.round_cnt - 1] && servoN.round_cnt > 1)
 			{
-				printf("Round %d:\tMatch!\tScore: %d\n\r", servoN.round_cnt - 1, 4000);
-				tot_score += 4000;
+				if(servoN.round_cnt == 1)
+				{
+					printf("Round %d:\tNo Match!\tScore: %d\n\r", servoN.round_cnt, 1000);
+				}
+				else
+				{
+					printf("Round %d:\tNo Match!\tScore: %d\n\r", servoN.round_cnt - 1, 1000);
+				}
+				tot_score += 1000;
 				flgs.matched[servoN.round_cnt - 1] = 1;
 			}
 		}

@@ -86,6 +86,7 @@ void NPC_Task(void * pvParameters)
 				pos++; // Move to next position
 			}
 		}
+		servoN.currState = moving;
 		TIM3->CCR1 = servoN.position[pos]; // Physical movement
 		servoN.currPos = pos; // Save new position
 		lastwake = xTaskGetTickCount();
@@ -93,6 +94,7 @@ void NPC_Task(void * pvParameters)
 		vTaskDelayUntil(&lastwake, travel_time_T);
 		flgs.go = 1; // Computer servo at new location. Start timer
 
+		servoN.currState = paused;
 		HAL_RNG_GenerateRandomNumber(&hrng, &rndNum); // Grab random number for time between servo moves
 		go_time = rndNum & 0xFFF;
 
