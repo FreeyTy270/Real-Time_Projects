@@ -35,9 +35,11 @@ typedef struct servo{
 
 typedef struct flags{
 	_Bool start; // Player Started Game Flag
+	_Bool go;
 	_Bool prog_btn_flg;
 	_Bool mv_left;
 	_Bool mv_right;
+	_Bool matched[5];
 }flags_t;
 
 void servo_init(void);

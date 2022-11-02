@@ -83,10 +83,11 @@ extern servo_t servoP; // Player servo
 
 int timer = 0;
 int score = 0; // Player Score
+int tot_score = 0;
 int taskMade = 0; // Records which initialization functions have been created
 int digBuf[4] = {0};
 
-flags_t flgs = {0, 0, 0, 0};
+flags_t flgs = {0, 0, 0, 0, 0, {0, 0, 0, 0, 0}};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -476,11 +477,6 @@ void Game_Task(void * pvParameters)
 	int range = 0; // Maximum CCR value - Minimum CCR value
 	int step = 0; // Step size between PWM CCR values for 6 equal spacings
 
-	int round_cnt = 0;
-	int score = 0;
-	uint32_t rndNum = 0;
-	int go_time = 0;
-
 
 	TickType_t lastwake = 0;
 	TickType_t debounce = pdMS_TO_TICKS(70);
@@ -529,7 +525,7 @@ void Game_Task(void * pvParameters)
 				}
 
 
-				printf("Calibration Finished!\n\n\r\t----- Press Button 2 to Begin -----\n\n\r"); // Print message for player
+				printf("\n\rCalibration Finished!\n\n\r----- Press Button 2 to Begin -----\n\n\r"); // Print message for player
 
 			}
 		}
@@ -544,35 +540,67 @@ void Game_Task(void * pvParameters)
 					xTaskCreate(NPC_Task, "NPC_Servo", 1024, NULL, PriorityNormal, &npc);
 					xTaskCreate(Player_Task, "Player_servo", 1024, NULL, PriorityNormal, &player);
 					taskMade += 2; // All 4 tasks have been created
-					printf("\t----- Game Started -----\n\n\r"); // Begin playeing
+					printf("\t  Game Started\n\n\r"); // Begin playeing
 					flgs.start = 1; // Signal game started
 				}
 			}
+
+			if(servoN.currPos == servoP.currPos && flgs.start && !flgs.matched[servoN.round_cnt] && servoN.round_cnt > 0 &&servoN.round_cnt < 6) // If game has begun and servos are at the same position then capture how long it took for the servo to move there
+			{
+				score = timer;
+				printf("Round %d:\tMatch!\tScore: %d\n\r", servoN.round_cnt, score);
+				tot_score += score;
+				flgs.matched[servoN.round_cnt] = 1;
+			}
+			else if(servoN.currPos != servoP.currPos && flgs.start && !flgs.matched[servoN.round_cnt - 1])
+			{
+				printf("Round %d:\tMatch!\tScore: %d\n\r", servoN.round_cnt - 1, 4000);
+				tot_score += 4000;
+				flgs.matched[servoN.round_cnt - 1] = 1;
+			}
 		}
 
-		vTaskDelay(pdMS_TO_TICKS(50));
+		if(servoN.round_cnt == 6)
+		{
+			printf("\t  ----- GAME OVER -----\n\n\n\n\r");
+			printf("Total score: %d\n\n\r", tot_score);
+			printf("Thanks for playing!\n\n\r");
+
+			vTaskDelete(NULL);
+		}
+		lastwake = xTaskGetTickCount();
+		vTaskDelayUntil(&lastwake, pdMS_TO_TICKS(10));
 	}
 }
 
 void spinner_Task( void * pvParameters )
 {
-	TickType_t disp_ticks = pdMS_TO_TICKS(50);
+	TickType_t disp_ticks = pdMS_TO_TICKS(2);
 
 	  for(;;)
 	  {
 		  TickType_t prev = xTaskGetTickCount();
 
-		  WriteNumberToSegment(3, score);
-		  vTaskDelayUntil(&prev, disp_ticks);
-		  //prev = xTaskGetTickCount();
-/*		  WriteNumberToSegment(2, dig_buffer[1]);
+		  if(servoN.round_cnt < 6)
+		  {
+			  dig_ret(score, digBuf);
+		  }
+		  else
+		  {
+			  dig_ret(tot_score, digBuf);
+		  }
+
+		  WriteNumberToSegment(3, digBuf[0]);
 		  vTaskDelayUntil(&prev, disp_ticks);
 		  prev = xTaskGetTickCount();
-		  WriteNumberToSegment(1, dig_buffer[2]);
+		  WriteNumberToSegment(2, digBuf[1]);
 		  vTaskDelayUntil(&prev, disp_ticks);
 		  prev = xTaskGetTickCount();
-		  WriteNumberToSegment(0, dig_buffer[3]);
-		  vTaskDelayUntil(&prev, disp_ticks);*/
+		  WriteNumberToSegment(1, digBuf[2]);
+		  vTaskDelayUntil(&prev, disp_ticks);
+		  prev = xTaskGetTickCount();
+		  WriteNumberToSegment(0, digBuf[3]);
+		  vTaskDelayUntil(&prev, disp_ticks);
 	  }
 }
 
@@ -630,10 +658,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM1) {
     HAL_IncTick();
-  /* USER CODE BEGIN Callback 1 */
-    timer++;
   }
-
+  /* USER CODE BEGIN Callback 1 */
+  if(flgs.go)
+  {
+	  timer++;
+  }
+  else
+  {
+	  timer = 0;
+  }
   /* USER CODE END Callback 1 */
 }
 

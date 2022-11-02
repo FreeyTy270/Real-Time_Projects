@@ -53,11 +53,18 @@ void NPC_Task(void * pvParameters)
 
 	while(1)
 	{
+		flgs.go = 0; // Timer not ready to begin
+		servoN.round_cnt += 1; // Start at round 1
 
-		HAL_RNG_GenerateRandomNumber(&hrng, &rndNum);
+		if(servoN.round_cnt == 6) // If all round completed delete task
+		{
+			vTaskDelete(NULL);
+		}
+		HAL_RNG_GenerateRandomNumber(&hrng, &rndNum); // Generate new position number
 
-		pos = rndNum & 0x7;
+		pos = rndNum & 0x7; // Mask to correct size
 
+		/* Set min max bounds */
 		if(pos > 5)
 		{
 			pos = 5;
@@ -67,26 +74,26 @@ void NPC_Task(void * pvParameters)
 			pos = 0;
 		}
 
-		TIM3->CCR1 = servoN.position[pos];
-		dist = (servoN.currPos > pos) ? servoN.currPos - pos : pos - servoN.currPos;
-		if(dist == 0)
+		dist = (servoN.currPos > pos) ? servoN.currPos - pos : pos - servoN.currPos; // Calc distance between new position and current position
+		if(dist == 0) // Do not repeat positions
 		{
 			if(servoN.currPos == pos5)
 			{
-				pos--;
+				pos--; // Move to 4
 			}
 			else
 			{
-				pos++;
+				pos++; // Move to next position
 			}
 		}
-		servoN.currPos = pos;
+		TIM3->CCR1 = servoN.position[pos]; // Physical movement
+		servoN.currPos = pos; // Save new position
 		lastwake = xTaskGetTickCount();
-		travel_time_T = pdMS_TO_TICKS(100*(dist) + 1);
-
+		travel_time_T = pdMS_TO_TICKS(100 * (dist + 1)); // Calc travel time in ticks. +1 in case dist = 0;
 		vTaskDelayUntil(&lastwake, travel_time_T);
+		flgs.go = 1; // Computer servo at new location. Start timer
 
-		HAL_RNG_GenerateRandomNumber(&hrng, &rndNum);
+		HAL_RNG_GenerateRandomNumber(&hrng, &rndNum); // Grab random number for time between servo moves
 		go_time = rndNum & 0xFFF;
 
 		if(go_time > 4000)
@@ -100,7 +107,7 @@ void NPC_Task(void * pvParameters)
 
 		lastwake = xTaskGetTickCount();
 		go_time_T = pdMS_TO_TICKS(go_time);
-		vTaskDelayUntil(&lastwake, go_time_T);
+		vTaskDelayUntil(&lastwake, go_time_T); // Wait to move to next random position
 	}
 
 }
@@ -108,14 +115,17 @@ void NPC_Task(void * pvParameters)
 void Player_Task(void * pvParameters)
 {
 
-	int pos = pos0;
-
 	TickType_t lastwake = 0;
 	TickType_t travel_time = pdMS_TO_TICKS(100);
 	TickType_t debounce = pdMS_TO_TICKS(20);
 
 	while(1)
 	{
+		if(servoN.round_cnt == 6) // If all round completed delete task
+		{
+			vTaskDelete(NULL);
+		}
+		/*Logic for detecting and debouncing button 1 press*/
 		if(HAL_GPIO_ReadPin(SHLD_A1_GPIO_Port, SHLD_A1_Pin)==GPIO_PIN_RESET)
 		{
 			lastwake = xTaskGetTickCount();
@@ -125,6 +135,8 @@ void Player_Task(void * pvParameters)
 				flgs.mv_left = 1;
 			}
 		}
+
+		/*Logic for detecting and debouncing button 3 press*/
 		else if(HAL_GPIO_ReadPin(SHLD_A3_GPIO_Port, SHLD_A3_Pin)==GPIO_PIN_RESET)
 		{
 			lastwake = xTaskGetTickCount();
@@ -135,18 +147,18 @@ void Player_Task(void * pvParameters)
 			}
 		}
 
-		if(flgs.mv_left)
+		if(flgs.mv_left) // Move to left position
 		{
-			if(servoP.currPos > 0)
+			if(servoP.currPos > pos0)
 			{
 				servoP.currPos--;
 				flgs.mv_left = 0;
 			}
 		}
 
-		if(flgs.mv_right)
+		if(flgs.mv_right) // Move to right position
 		{
-			if(servoP.currPos < 5)
+			if(servoP.currPos < pos5)
 			{
 				servoP.currPos++;
 				flgs.mv_right = 0;
@@ -155,7 +167,7 @@ void Player_Task(void * pvParameters)
 
 		TIM3->CCR2 = servoP.position[servoP.currPos];
 		lastwake = xTaskGetTickCount();
-		vTaskDelayUntil(&lastwake, travel_time);
+		vTaskDelayUntil(&lastwake, travel_time); // Wait for servo to move to new location
 	}
 }
 
@@ -190,7 +202,7 @@ void calibration_Task(void * pvParameters)
 		{
 			if(!prnt_flg)
 			{
-				printf("CAL%d\n\r", serNum); // Print calibration message
+				printf("\n\rCAL%d\n\r", serNum); // Print calibration message
 				prnt_flg = 1; // Signal message has been printed so it only does it once
 			}
 
