@@ -33,6 +33,13 @@ typedef struct servo{
 	int position[6];
 }servo_t;
 
+typedef struct flags{
+	_Bool start; // Player Started Game Flag
+	_Bool prog_btn_flg;
+	_Bool mv_left;
+	_Bool mv_right;
+}flags_t;
+
 void servo_init(void);
 void calibration_Task(void * pvParameters);
 void NPC_Task(void * pvParameters);

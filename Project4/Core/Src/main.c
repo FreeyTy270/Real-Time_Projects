@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-//#include "cmsis_os.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -39,7 +39,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -70,6 +69,7 @@ TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
 
+osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 TaskHandle_t game_mngr;
 TaskHandle_t npc;
@@ -83,10 +83,10 @@ extern servo_t servoP; // Player servo
 
 int timer = 0;
 int score = 0; // Player Score
-
-_Bool start = 0; // Player Started Game Flag
-_Bool go = 0;
 int taskMade = 0; // Records which initialization functions have been created
+int digBuf[4] = {0};
+
+flags_t flgs = {0, 0, 0, 0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -102,6 +102,7 @@ void spinner_Task( void * pvParameters );
 
 void shiftOut(uint8_t val);
 void WriteNumberToSegment(int Segment, int Value);
+void dig_ret(unsigned long val, int *digBuf);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -169,8 +170,6 @@ int main(void)
 
   vTaskStartScheduler();
   /* USER CODE END RTOS_THREADS */
-
-  /* Start scheduler */
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -373,11 +372,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, SHLD_D13_Pin|SHLD_D12_Pin|SHLD_D11_Pin|SHLD_D7_SEG7_Clock_Pin
-                          |SHLD_D8_SEG7_Data_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, SHLD_D3_Pin|SHLD_D4_SEG7_Latch_Pin|SHLD_D10_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -385,7 +380,26 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /* USER CODE BEGIN 4 */
+  /*Configure GPIO pins : SHLD_A1_Pin SHLD_A2_Pin */
+  GPIO_InitStruct.Pin = SHLD_A1_Pin|SHLD_A2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LD2_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SHLD_A3_Pin */
+  GPIO_InitStruct.Pin = SHLD_A3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(SHLD_A3_GPIO_Port, &GPIO_InitStruct);
+
+/* USER CODE BEGIN 4 */
 
   /*Configure GPIO pins : SHLD_A5_Pin SHLD_A4_Pin */
   GPIO_InitStruct.Pin = SHLD_A5_Pin|SHLD_A4_Pin;
@@ -399,24 +413,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : SHLD_A1_Pin SHLD_A2_Pin */
-  GPIO_InitStruct.Pin = SHLD_A1_Pin|SHLD_A2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   /*Configure GPIO pins : SHLD_D13_Pin SHLD_D12_Pin SHLD_D11_Pin SHLD_D7_SEG7_Clock_Pin */
   GPIO_InitStruct.Pin = SHLD_D13_Pin|SHLD_D12_Pin|SHLD_D11_Pin|SHLD_D7_SEG7_Clock_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : SHLD_A3_Pin */
-  GPIO_InitStruct.Pin = SHLD_A3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(SHLD_A3_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SHLD_D6_Pin SHLD_D5_Pin */
   GPIO_InitStruct.Pin = SHLD_D6_Pin|SHLD_D5_Pin;
@@ -465,7 +467,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
 }
 
 
@@ -515,17 +516,18 @@ void Game_Task(void * pvParameters)
 
 				range = servoN.position[pos5] - servoN.position[pos0];
 				step = range / 6;
-				for(int i = 1; i < 5; i++)
+				for(int i = 1; i < 6; i++)
 				{
 					servoN.position[i] = servoN.position[i-1] + step;
 				}
 
 				range = servoP.position[pos5] - servoP.position[pos0];
 				step = range / 6;
-				for(int i = 1; i < 5; i++)
+				for(int i = 1; i < 6; i++)
 				{
 					servoP.position[i] = servoP.position[i-1] + step;
 				}
+
 
 				printf("Calibration Finished!\n\n\r\t----- Press Button 2 to Begin -----\n\n\r"); // Print message for player
 
@@ -542,8 +544,8 @@ void Game_Task(void * pvParameters)
 					xTaskCreate(NPC_Task, "NPC_Servo", 1024, NULL, PriorityNormal, &npc);
 					xTaskCreate(Player_Task, "Player_servo", 1024, NULL, PriorityNormal, &player);
 					taskMade += 2; // All 4 tasks have been created
-					printf("Game Started: ROUND 1\n\n\r"); // Begin playeing
-					start = 1; // Signal game started
+					printf("\t----- Game Started -----\n\n\r"); // Begin playeing
+					flgs.start = 1; // Signal game started
 				}
 			}
 		}
@@ -596,6 +598,21 @@ void WriteNumberToSegment(int Segment, int Value)
   shiftOut(SEGMENT_SELECT[Segment] );
   HAL_GPIO_WritePin(SHLD_D4_SEG7_Latch_GPIO_Port, SHLD_D4_SEG7_Latch_Pin, GPIO_PIN_SET);
 }
+
+void dig_ret(unsigned long val, int *digBuf)
+{
+	int i = 0;
+	while(val > 0)
+	{
+
+		int mod = val % 10;  //split last digit from number
+		digBuf[i] = mod; //print the digit.
+		i++;
+
+		val = val / 10;    //divide num by 10. num /= 10 also a valid one
+	}
+}
+
 /* USER CODE END 4 */
 
 /**
@@ -613,9 +630,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM1) {
     HAL_IncTick();
+  /* USER CODE BEGIN Callback 1 */
     timer++;
   }
-  /* USER CODE BEGIN Callback 1 */
 
   /* USER CODE END Callback 1 */
 }
