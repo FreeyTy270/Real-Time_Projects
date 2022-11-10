@@ -133,7 +133,8 @@ int main(void)
   /* Create the thread(s) */
 
   /* USER CODE BEGIN RTOS_THREADS */
-  xTaskCreate()
+  xTaskCreate(mng_Task, "mngr", 512, NULL, PriorityHigh, &mngr);
+  xTaskCreate(read_Task, "Reader", 256, NULL, PriorityAboveNormal, &rdr);
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -373,9 +374,20 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void mng_Task(void pvParameters)
+void mng_Task(void * pvParameters)
 {
+	while(1)
+	{
 
+	}
+}
+
+void read_Task(void * pvParameters)
+{
+	while(1)
+	{
+		xTaskDelay(5);
+	}
 }
 /* USER CODE END 4 */
 

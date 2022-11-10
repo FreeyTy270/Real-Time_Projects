@@ -16,16 +16,25 @@ extern TIM_HandleTypeDef htim2;
 
 void signal_Gen(sig_t *currSig)
 {
-	if(currSig->type == RECT)
+	switch(currSig->type)
+	case RECT:
 	{
 		calc_dig(currSig->amp);
+		break;
 	}
-	else if(currSig->type == SIN)
+	case SIN:
 	{
 		for(int i = 0; i < Fs; i++)
 		{
 			currSig->ROM[i] = (sin(i*2*PI/Fs) + 1)*(currSig->amp/3.3)*4096;
 		}
+		break;
+	}
+	case TRI:
+	{
+		float step = ((currSig->amp/3.3)*4096)/Fs;
+
+		for(int i = 0; i < Fs)
 	}
 }
 
