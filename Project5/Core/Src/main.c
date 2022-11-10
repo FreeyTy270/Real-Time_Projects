@@ -1,4 +1,4 @@
-d/* USER CODE BEGIN Header */
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -32,6 +32,8 @@ d/* USER CODE BEGIN Header */
 #include "event_groups.h"
 #include "string.h"
 #include "math.h"
+
+#include "numGen.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

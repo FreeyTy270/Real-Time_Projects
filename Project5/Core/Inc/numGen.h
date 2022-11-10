@@ -8,26 +8,30 @@
 #ifndef INC_NUMGEN_H_
 #define INC_NUMGEN_H_
 
-int *sig_ROM = NULL;
+#define Fs 200
+
+float sig1_ROM[Fs] = {0};
+float sig2_ROM[Fs] = {0};
 
 typedef enum sigtype {
 	RECT,
 	TRI,
 	SIN,
 	ARB,
-}sig_t;
+}sigType_t;
 
-typedef struct sig_characteristics {
+typedef struct signal {
 	_Bool channel;
-	sig_t type;
+	sigType_t type;
 	int freq;
-	int amp;
+	float amp;
 	int offset;
 	int noise;
-}sigCh_t;
+	float *ROM;
+}sig_t;
 
 
-void signal_Gen(sigCh_t *currSig);
+void signal_Gen(sig_t *currSig);
 
 
 #endif /* INC_NUMGEN_H_ */
