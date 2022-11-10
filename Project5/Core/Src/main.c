@@ -67,6 +67,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_DAC1_Init(void);
 
 /* USER CODE BEGIN PFP */
+void mng_Task(void * pvParameters);
 
 /* USER CODE END PFP */
 
@@ -130,7 +131,7 @@ int main(void)
   /* Create the thread(s) */
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  xTaskCreate()
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -370,7 +371,10 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void mng_Task(void pvParameters)
+{
 
+}
 /* USER CODE END 4 */
 
 /**
