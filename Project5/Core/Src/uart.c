@@ -11,10 +11,17 @@
 #include "queue.h"
 #include "semphr.h"
 #include "event_groups.h"
+#include "stm32l4xx_hal.h"
 
+#include "signal.h"
+
+extern UART_HandleTypeDef huart2;
+extern QueueHandle_t msgQ;
 
 uint8_t mainbuf[2] = {0};
 uint8_t rxbuf = 'n';
+
+extern QueueHandle_t msgQ;
 
 unsigned char c_return[] = {'\n', '\r', '>'};
 unsigned char caret = '>';
@@ -35,51 +42,6 @@ void read_Task(void * pvParameters)
 	while(1)
 	{
 		vTaskDelay(5);
-
-		if (rxbuf == '\r')
-		{
-			cr_flg = 1;
-			HAL_UART_Transmit(&huart2, c_return, sizeof(c_return), 2);
-		}
-		else if(rxbuf == '\b')
-		{
-			HAL_UART_Transmit(&huart2, &clr, sizeof(clr), 2);
-		}
-		else if (rxbuf == 'N' || rxbuf == 'n')
-		{
-			mainbuf[index] = 'N';
-		}
-		else if (rxbuf == 'C' || rxbuf == 'c')
-		{
-			mainbuf[index] = 'C';
-		}
-		else if (rxbuf == 'R' || rxbuf == 'r')
-		{
-			mainbuf[index] = 'R';
-		}
-		else if (rxbuf == 'P' || rxbuf == 'p')
-		{
-			mainbuf[index] = 'P';
-		}
-		else if (rxbuf == 'B' || rxbuf == 'b')
-		{
-			mainbuf[index] = 'B';
-		}
-		else if (rxbuf == 'S' || rxbuf == 's')
-		{
-			mainbuf[index] = 'S';
-		}
-
-		if(index == 1)
-		{
-			index = 0;
-		}
-		else
-		{
-			index ++;
-		}
-
-		rxbuf = 'n';
 
 	}
 }

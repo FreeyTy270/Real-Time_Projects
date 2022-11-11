@@ -11,6 +11,8 @@
 #include <stdint.h>
 
 #define Fs 200
+#define TIM 8000000
+
 
 typedef enum sigtype {
 	RECT,
@@ -22,7 +24,7 @@ typedef enum sigtype {
 typedef struct signal {
 	_Bool channel;
 	sigType_t type;
-	int freq;
+	double freq;
 	float amp;
 	int offset;
 	int noise;
@@ -31,7 +33,7 @@ typedef struct signal {
 
 void mkSig(sig_t *currSig);
 void ROM_Gen(sig_t *currSig);
-void tim_adj(int freq);
+void tim_adj(double freq);
 
 
 #endif /* INC_SIGNAL_H_ */
