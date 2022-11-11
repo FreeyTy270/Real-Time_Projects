@@ -10,9 +10,6 @@
 
 #define Fs 200
 
-float sig1_ROM[Fs] = {0};
-float sig2_ROM[Fs] = {0};
-
 typedef enum sigtype {
 	RECT,
 	TRI,
@@ -27,7 +24,7 @@ typedef struct signal {
 	float amp;
 	int offset;
 	int noise;
-	float *ROM;
+	uint32_t *ROM;
 }sig_t;
 
 
