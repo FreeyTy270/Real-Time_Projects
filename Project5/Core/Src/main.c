@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
+//#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -33,7 +33,6 @@
 #include "string.h"
 #include "math.h"
 
-#include "numGen.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +56,9 @@ DMA_HandleTypeDef hdma_dac_ch1;
 TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_rx;
+
+osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 TaskHandle_t mngr;
 TaskHandle_t rdr;
@@ -74,6 +76,7 @@ static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_TIM2_Init(void);
+void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 void mng_Task(void * pvParameters);
@@ -136,10 +139,19 @@ int main(void)
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* definition and creation of defaultTask */
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+
   /* USER CODE BEGIN RTOS_THREADS */
   xTaskCreate(mng_Task, "mngr", 512, NULL, PriorityHigh, &mngr);
   xTaskCreate(read_Task, "Reader", 256, NULL, PriorityAboveNormal, &rdr);
   /* USER CODE END RTOS_THREADS */
+
+  /* Start scheduler */
+  osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -270,7 +282,7 @@ static void MX_TIM2_Init(void)
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 1000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
     Error_Handler();
@@ -340,6 +352,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+  /* DMA1_Channel6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
 
 }
 
@@ -379,58 +394,57 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void mng_Task(void * pvParameters)
 {
-	_Bool dir = 0;
 	double est_freq = 0;
-	sig_t signal_1 = {0, SIN, 1000, 1, 0, 0, sig1_ROM};
+	sig_t signal_1 = {0, SIN, 100, 1.5, 0, 0, sig1_ROM};
 
-	signal_Gen(&signal_1);
+	mkSig(&signal_1);
 
 	HAL_TIM_Base_Start(&htim2);
 
-	printf("Timer started, values calculated. Starting output...\n\r");
-	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
+	printf("Timer started, values calculated. Starting output...\n\n\r");
+	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, signal_1.ROM, Fs, DAC_ALIGN_12B_R);
 
 	while(1)
 	{
-		uint32_t old_ARR = TIM2->ARR;
-
-		if(!dir)
-		{
-			TIM2->ARR /= 2;
-			if(TIM2->ARR <= 5)
-			{
-				dir = 1;
-			}
-		}
-		else if(dir)
-		{
-			TIM2->ARR *= 2;
-			if(TIM2->ARR >= 1000)
-			{
-				HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-				signal_1.amp = 2.5;
-				signal_Gen(&signal_1);
-				dir = 0;
-				HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
-			}
-		}
 		est_freq = 1000000/(TIM2->ARR + 1)/Fs;
-		TIM2->CNT = old_ARR;
-		printf("Timer value changed to: %lu\tExpected Frequency: %.2f\n\r", TIM2->ARR, est_freq);
-//		printf("Hit Timer interrupt %d times\n\n\r", in_flg);
-		vTaskDelay(pdMS_TO_TICKS(3000));
+		printf("Current timer value: %lu\tExpected Frequency: %.2f\n\r", TIM2->ARR, est_freq);
+		vTaskDelay(pdMS_TO_TICKS(5000));
+		if(signal_1.type < 4)
+		{
+			signal_1.type++;
+		}
+		else
+		{
+			signal_1.type = 0;
+		}
+
+		HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+		mkSig(&signal_1);
+		HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, signal_1.ROM, Fs, DAC_ALIGN_12B_R);
 
 	}
 }
 
-void read_Task(void * pvParameters)
-{
-	while(1)
-	{
-		vTaskDelay(5);
-	}
-}
+
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void const * argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END 5 */
+}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
