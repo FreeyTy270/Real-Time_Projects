@@ -34,6 +34,7 @@ uint32_t ekg[] = {
 };
 
 extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim6;
 
 void mkSig(sig_t *currSig)
 {
@@ -43,7 +44,7 @@ void mkSig(sig_t *currSig)
 
 void ROM_Gen(sig_t *currSig)
 {
-	double amp_dig = (currSig->amp*4096/2.8);
+	double amp_dig = (currSig->amp*4096/3);
 
 	switch(currSig->type)
 	{
@@ -64,37 +65,46 @@ void ROM_Gen(sig_t *currSig)
 		}
 		case SIN:
 		{
-			for(int i = 0; i < Fs; i++)
+			for(int i = 0; i <= Fs/4; i++)
 			{
 				currSig->ROM[i] = (amp_dig/2)*(sin(i*2*PI/Fs) + currSig->offset);
+				currSig->ROM[100 - i] = currSig->ROM[i];
+				currSig->ROM[100 + i] = (amp_dig/2)*(sin((100 + i)*2*PI/Fs) + currSig->offset);
+				currSig->ROM[Fs - 1 - i] = currSig->ROM[100 + i];
 			}
 			break;
 		}
 		case TRI:
 		{
-			double step = amp_dig/Fs/2;
+			double step = amp_dig/Fs;
 
 			for(int i = 0; i < Fs/2; i++)
 			{
-				currSig->ROM[i] = step*i;
-				currSig->ROM[Fs-1-i] = step*i;
+				currSig->ROM[i] = 2*step*i;
+				currSig->ROM[Fs-1-i] = currSig->ROM[i];
 			}
 			break;
 		}
 		case ARB:
 		{
-			currSig->ROM = ekg;
+			for(int i = 0; i <= Fs; i++)
+			{
+				currSig->ROM[i] = (ekg[i] / amp_dig) * ekg[i];
+			}
 		}
 	}
 }
 
 
-void tim_adj(double freq)
+void tim_adj(_Bool ch, double freq)
 {
-	uint32_t oldARR = TIM2->ARR;
+	TIM_TypeDef *Timer = NULL;
+
+	Timer = ch ? TIM6 : TIM2;
+	uint32_t oldARR = Timer->ARR;
 
 	uint32_t newARR = (TIM/(freq * Fs)) - 1;
-	TIM2->ARR = newARR;
-	TIM2->CNT = oldARR;
+	Timer->ARR = newARR;
+	Timer->CNT = oldARR;
 
 }
