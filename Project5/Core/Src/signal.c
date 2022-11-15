@@ -34,17 +34,17 @@ uint32_t ekg[] = {
 };
 
 extern TIM_HandleTypeDef htim2;
-extern TIM_HandleTypeDef htim6;
+extern TIM_HandleTypeDef htim4;
 
 void mkSig(sig_t *currSig)
 {
 	ROM_Gen(currSig);
-	tim_adj(currSig->freq);
+	tim_adj(currSig->channel, currSig->freq);
 }
 
 void ROM_Gen(sig_t *currSig)
 {
-	double amp_dig = (currSig->amp*4096/3);
+	double amp_dig = (currSig->amp*4096/3.3);
 
 	switch(currSig->type)
 	{
@@ -100,7 +100,7 @@ void tim_adj(_Bool ch, double freq)
 {
 	TIM_TypeDef *Timer = NULL;
 
-	Timer = ch ? TIM6 : TIM2;
+	Timer = ch ? TIM4 : TIM2;
 	uint32_t oldARR = Timer->ARR;
 
 	uint32_t newARR = (TIM/(freq * Fs)) - 1;

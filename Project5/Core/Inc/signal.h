@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-#define Fs 200
+#define Fs 256
 #define TIM 8000000
 
 
@@ -33,7 +33,7 @@ typedef struct signal {
 
 void mkSig(sig_t *currSig);
 void ROM_Gen(sig_t *currSig);
-void tim_adj(double freq);
+void tim_adj(_Bool ch, double freq);
 
 
 #endif /* INC_SIGNAL_H_ */

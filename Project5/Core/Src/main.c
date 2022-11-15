@@ -58,11 +58,10 @@ DMA_HandleTypeDef hdma_dac_ch1;
 DMA_HandleTypeDef hdma_dac_ch2;
 
 TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
-
 /* USER CODE BEGIN PV */
 TaskHandle_t mngr;
 TaskHandle_t rdr;
@@ -82,7 +81,7 @@ static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_TIM6_Init(void);
+static void MX_TIM4_Init(void);
 
 /* USER CODE BEGIN PFP */
 void mng_Task(void * pvParameters);
@@ -126,7 +125,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_DAC1_Init();
   MX_TIM2_Init();
-  MX_TIM6_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -152,8 +151,6 @@ int main(void)
   xTaskCreate(read_Task, "Reader", 256, NULL, PriorityAboveNormal, &rdr);
   /* USER CODE END RTOS_THREADS */
 
-  /* We should never get here as control is now taken by the scheduler */
-  /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
   vTaskStartScheduler();
@@ -255,7 +252,7 @@ static void MX_DAC1_Init(void)
 
   /** DAC channel OUT2 config
   */
-  sConfig.DAC_Trigger = DAC_TRIGGER_T6_TRGO;
+  sConfig.DAC_Trigger = DAC_TRIGGER_T4_TRGO;
   if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
@@ -312,40 +309,47 @@ static void MX_TIM2_Init(void)
 }
 
 /**
-  * @brief TIM6 Initialization Function
+  * @brief TIM4 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM6_Init(void)
+static void MX_TIM4_Init(void)
 {
 
-  /* USER CODE BEGIN TIM6_Init 0 */
+  /* USER CODE BEGIN TIM4_Init 0 */
 
-  /* USER CODE END TIM6_Init 0 */
+  /* USER CODE END TIM4_Init 0 */
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN TIM6_Init 1 */
+  /* USER CODE BEGIN TIM4_Init 1 */
 
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 80 - 1;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 1000 - 1;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 80-1;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 1000-1;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM6_Init 2 */
+  /* USER CODE BEGIN TIM4_Init 2 */
 
-  /* USER CODE END TIM6_Init 2 */
+  /* USER CODE END TIM4_Init 2 */
 
 }
 
@@ -432,24 +436,30 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void mng_Task(void * pvParameters)
 {
-	double est_freq = 0;
+	double est_freq_1 = 0;
+	double est_freq_2 = 0;
 
 	//msgQ = xQueueCreate(1, sizeof(sig_t));
 
-	sig_t signal_1 = {0, SIN, 0.5, 1.5, 1, 0, sig1_ROM};
+	sig_t signal_1 = {0, SIN, 20, 1.5, 1, 0, sig1_ROM};
+	sig_t signal_2 = {1, RECT, 5000, 2, 1, 0, sig2_ROM};
 
 	mkSig(&signal_1);
+	mkSig(&signal_2);
 
 	HAL_TIM_Base_Start(&htim2);
+	HAL_TIM_Base_Start(&htim4);
 
 	printf("Timer started, values calculated. Starting output...\n\n\r");
-	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, signal_1.ROM, Fs, DAC_ALIGN_12B_R);
+	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
+	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, sig2_ROM, Fs, DAC_ALIGN_12B_R);
 
 	while(1)
 	{
-		est_freq = TIM/((TIM2->ARR + 1)*Fs);
+		est_freq_1 = TIM/((TIM2->ARR + 1)*Fs);
+		est_freq_2 = TIM/((TIM6->ARR + 1)*Fs);
 
-		printf("Current timer value: %lu\tExpected Frequency: %.2f\n\r", TIM2->ARR, est_freq);
+		printf("Expected Frequency for Signal 1: %.2f\tExpected Frequency for Signal 2: %.2f\n\r", est_freq_1, est_freq_2);
 		vTaskDelay(pdMS_TO_TICKS(5000));
 		if(signal_1.type < 3)
 		{
@@ -461,9 +471,22 @@ void mng_Task(void * pvParameters)
 			signal_1.type = 0;
 		}
 
+		if(signal_2.type < 3)
+		{
+			signal_2.type++;
+			printf("New signal type: %d\n\r", signal_2.type);
+		}
+		else
+		{
+			signal_2.type = 0;
+		}
+
 		HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+		HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
 		mkSig(&signal_1);
-		HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, signal_1.ROM, Fs, DAC_ALIGN_12B_R);
+		mkSig(&signal_2);
+		HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
+		HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, sig2_ROM, Fs, DAC_ALIGN_12B_R);
 
 	}
 }
