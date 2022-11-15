@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-#define Fs 256
+#define Fs 200
 #define TIM 8000000
 
 

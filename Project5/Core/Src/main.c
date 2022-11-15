@@ -282,7 +282,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 80-1;
+  htim2.Init.Prescaler = 10-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 1000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -327,7 +327,7 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 80-1;
+  htim4.Init.Prescaler = 10-1;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim4.Init.Period = 1000-1;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -441,8 +441,8 @@ void mng_Task(void * pvParameters)
 
 	//msgQ = xQueueCreate(1, sizeof(sig_t));
 
-	sig_t signal_1 = {0, SIN, 20, 1.5, 1, 0, sig1_ROM};
-	sig_t signal_2 = {1, RECT, 5000, 2, 1, 0, sig2_ROM};
+	sig_t signal_1 = {0, SIN, 10000, 1.5, 1, 0, sig1_ROM};
+	sig_t signal_2 = {1, RECT, 20000, 2, 1, 0, sig2_ROM};
 
 	mkSig(&signal_1);
 	mkSig(&signal_2);
@@ -457,7 +457,7 @@ void mng_Task(void * pvParameters)
 	while(1)
 	{
 		est_freq_1 = TIM/((TIM2->ARR + 1)*Fs);
-		est_freq_2 = TIM/((TIM6->ARR + 1)*Fs);
+		est_freq_2 = TIM/((TIM4->ARR + 1)*Fs);
 
 		printf("Expected Frequency for Signal 1: %.2f\tExpected Frequency for Signal 2: %.2f\n\r", est_freq_1, est_freq_2);
 		vTaskDelay(pdMS_TO_TICKS(5000));
