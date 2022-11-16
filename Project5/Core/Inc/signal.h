@@ -23,7 +23,7 @@ typedef enum sigtype {
 typedef struct signal {
 	_Bool channel;
 	sigType_t type;
-	double freq;
+	int freq;
 	double minV;
 	double maxV;
 	int noise;

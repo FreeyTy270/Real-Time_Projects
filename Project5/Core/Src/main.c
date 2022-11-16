@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
+//#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -57,6 +57,8 @@ DAC_HandleTypeDef hdac1;
 DMA_HandleTypeDef hdma_dac_ch1;
 DMA_HandleTypeDef hdma_dac_ch2;
 
+RNG_HandleTypeDef hrng;
+
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim4;
 
@@ -82,6 +84,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM4_Init(void);
+static void MX_RNG_Init(void);
 
 /* USER CODE BEGIN PFP */
 void mng_Task(void * pvParameters);
@@ -126,6 +129,7 @@ int main(void)
   MX_DAC1_Init();
   MX_TIM2_Init();
   MX_TIM4_Init();
+  MX_RNG_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -155,6 +159,8 @@ int main(void)
   xTaskCreate(mng_Task, "mngr", 1024, NULL, PriorityHigh, &mngr);
   /* USER CODE END RTOS_THREADS */
 
+  /* We should never get here as control is now taken by the scheduler */
+  /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
   vTaskStartScheduler();
@@ -268,6 +274,32 @@ static void MX_DAC1_Init(void)
 }
 
 /**
+  * @brief RNG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RNG_Init(void)
+{
+
+  /* USER CODE BEGIN RNG_Init 0 */
+
+  /* USER CODE END RNG_Init 0 */
+
+  /* USER CODE BEGIN RNG_Init 1 */
+
+  /* USER CODE END RNG_Init 1 */
+  hrng.Instance = RNG;
+  if (HAL_RNG_Init(&hrng) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RNG_Init 2 */
+
+  /* USER CODE END RNG_Init 2 */
+
+}
+
+/**
   * @brief TIM2 Initialization Function
   * @param None
   * @retval None
@@ -290,7 +322,7 @@ static void MX_TIM2_Init(void)
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 1000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
     Error_Handler();
@@ -441,15 +473,14 @@ static void MX_GPIO_Init(void)
 void mng_Task(void * pvParameters)
 {
 	TickType_t Period = pdMS_TO_TICKS(20);
+	TickType_t lastWake = 0;
 	sig_t sigReq;
 
-	//msgQ = xQueueCreate(1, sizeof(sig_t));
+	sig_t signal_1;
+	sig_t signal_2;
 
-	sig_t signal_1 = {0, SIN, 10000, 0.5, 2.5, 0, sig1_ROM};
-	sig_t signal_2 = {1, RECT, 20000, 1, 2, 0, sig2_ROM};
-
-	mkSig(&signal_1);
-	mkSig(&signal_2);
+	/*mkSig(&signal_1);
+	mkSig(&signal_2);*/
 
 	HAL_TIM_Base_Start(&htim2);
 	HAL_TIM_Base_Start(&htim4);
@@ -457,12 +488,13 @@ void mng_Task(void * pvParameters)
 	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
 	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, sig2_ROM, Fs, DAC_ALIGN_12B_R);
 
-	xTaskCreate(read_Task, "Reader", 256, NULL, PriorityAboveNormal, &rdr);
+	xTaskCreate(read_Task, "Reader", 512, NULL, PriorityAboveNormal, &rdr);
 
 	while(1)
 	{
 		if(cmd_flg)
 		{
+			cmd_flg = 0;
 			if(xQueueReceive(msgQ, &sigReq, Period) != pdTRUE)
 			{
 				printf("Could not retrieve signal request from queue\n\r");
@@ -471,6 +503,7 @@ void mng_Task(void * pvParameters)
 			if(sigReq.channel)
 			{
 				signal_2 = sigReq;
+				signal_2.ROM = sig2_ROM;
 				HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
 				mkSig(&signal_2);
 				HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, sig2_ROM, Fs, DAC_ALIGN_12B_R);
@@ -478,6 +511,7 @@ void mng_Task(void * pvParameters)
 			else
 			{
 				signal_1 = sigReq;
+				signal_1.ROM = sig1_ROM;
 				HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
 				mkSig(&signal_1);
 				HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
@@ -485,12 +519,15 @@ void mng_Task(void * pvParameters)
 
 		}
 
+
+		lastWake = xTaskGetTickCount();
+		vTaskDelayUntil(&lastWake, Period);
+
 	}
 }
 
 
 /* USER CODE END 4 */
-
 /**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM1 interrupt took place, inside

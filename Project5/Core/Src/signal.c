@@ -35,6 +35,7 @@ uint32_t ekg[] = {
 
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim4;
+extern RNG_HandleTypeDef hrng;
 
 void mkSig(sig_t *currSig)
 {
@@ -46,6 +47,29 @@ void ROM_Gen(sig_t *currSig)
 {
 	double amp = currSig->maxV - currSig->minV;
 	double amp_dig = (amp*4096/3.3);
+	double offset = currSig->minV/3.3*4096;
+
+	uint32_t rndNum = 0;
+	uint16_t bitMask = 0;
+	uint16_t noiseStp = 0;
+
+	if(currSig->noise > 0)
+	{
+		HAL_RNG_GenerateRandomNumber(&hrng, &rndNum);
+
+		rndNum &= 0xFFF;
+		noiseStp = 0xF;
+
+		int tmpMask = 0;
+
+		for(int i = 1; i < currSig->noise; i++)
+		{
+			tmpMask = 1 << (currSig->noise - i);
+			bitMask |= tmpMask;
+		}
+
+		rndNum &= bitMask;
+	}
 
 	switch(currSig->type)
 	{
@@ -62,7 +86,11 @@ void ROM_Gen(sig_t *currSig)
 					currSig->ROM[i] = 0;
 				}
 
-				currSig->ROM[i] + currSig->minV;
+				if(i % noiseStp == 0)
+				{
+					currSig->ROM[i] += rndNum;
+				}
+				currSig->ROM[i] += offset;
 			}
 			break;
 		}
@@ -70,9 +98,13 @@ void ROM_Gen(sig_t *currSig)
 		{
 			for(int i = 0; i <= Fs/4; i++)
 			{
-				currSig->ROM[i] = (amp_dig/2)*(sin(i*2*PI/Fs) + 1) + currSig->minV;
+				currSig->ROM[i] = (amp_dig/2)*(sin(i*2*PI/Fs) + 1) + offset;
+				if(i % noiseStp == 0)
+				{
+					currSig->ROM[i] += rndNum;
+				}
 				currSig->ROM[100 - i] = currSig->ROM[i];
-				currSig->ROM[100 + i] = (amp_dig/2)*(sin((100 + i)*2*PI/Fs) + 1) + currSig->minV;
+				currSig->ROM[100 + i] = (amp_dig/2)*(sin((100 + i)*2*PI/Fs) + 1) + offset;
 				currSig->ROM[Fs - 1 - i] = currSig->ROM[100 + i];
 			}
 			break;
@@ -83,16 +115,28 @@ void ROM_Gen(sig_t *currSig)
 
 			for(int i = 0; i < Fs/2; i++)
 			{
-				currSig->ROM[i] = 2*step*i + currSig->minV;
+				currSig->ROM[i] = 2*step*i + offset;
+				if(i % noiseStp == 0)
+				{
+					currSig->ROM[i] += rndNum;
+				}
 				currSig->ROM[Fs-1-i] = currSig->ROM[i];
 			}
 			break;
 		}
 		case ARB:
 		{
-			for(int i = 0; i < 256; i++)
+			int arb_amp = 3141 - 928;
+			double scale = amp_dig/arb_amp;
+
+
+			for(int i = 0; i < Fs; i++)
 			{
-				currSig->ROM[i] = (ekg[i] / amp_dig) * ekg[i] + currSig->minV;
+				currSig->ROM[i] = (uint32_t) (scale*(ekg[i] - 928) + offset);
+				if(i % noiseStp == 0)
+				{
+					currSig->ROM[i] += rndNum;
+				}
 			}
 		}
 	}
