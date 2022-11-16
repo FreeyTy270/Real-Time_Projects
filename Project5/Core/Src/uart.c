@@ -42,7 +42,7 @@ unsigned char caret = '>';
 unsigned char clr = '\0';
 
 _Bool cr_flg = 0;
-
+_Bool cmd_flg = 0;
 
 enum cmd Rx_st = ch;
 
@@ -131,14 +131,14 @@ void read_Task(void * pvParameters)
 			printf("Calculating new signal...\n\n\r");
 			cmd_flg = 1;
 
-			if(xQueueSend(msgQ, &newSig, Period) != pdPass)
+			if(xQueueSend(msgQ, &newSig, Period) != pdTRUE)
 			{
 				printf("Could not post new signal to mailbox\n\r");
 			}
 		}
 
 		lastWake = xTaskGetTickCount();
-		vTaskDelayUntil(lastWake, Period);
+		vTaskDelayUntil(&lastWake, Period);
 
 
 

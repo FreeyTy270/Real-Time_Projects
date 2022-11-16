@@ -13,8 +13,6 @@
 #define Fs 200
 #define TIM 8000000
 
-_Bool cmd_flg = 0;
-
 typedef enum sigtype {
 	RECT,
 	TRI,

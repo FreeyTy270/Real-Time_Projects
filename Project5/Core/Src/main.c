@@ -70,7 +70,7 @@ QueueHandle_t msgQ;
 
 extern uint32_t sig1_ROM[];
 extern uint32_t sig2_ROM[];
-
+extern _Bool cmd_flg;
 int in_flg = 0;
 /* USER CODE END PV */
 
@@ -454,7 +454,6 @@ void mng_Task(void * pvParameters)
 	HAL_TIM_Base_Start(&htim2);
 	HAL_TIM_Base_Start(&htim4);
 
-	printf("Timer started, values calculated. Starting output...\n\n\r");
 	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
 	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, sig2_ROM, Fs, DAC_ALIGN_12B_R);
 
@@ -464,7 +463,7 @@ void mng_Task(void * pvParameters)
 	{
 		if(cmd_flg)
 		{
-			if(xQueueReceive(msgQ, &sigReq, Period) != pdPass)
+			if(xQueueReceive(msgQ, &sigReq, Period) != pdTRUE)
 			{
 				printf("Could not retrieve signal request from queue\n\r");
 			}
