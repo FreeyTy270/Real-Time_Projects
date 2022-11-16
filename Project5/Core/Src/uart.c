@@ -17,14 +17,13 @@
 #include "signal.h"
 
 extern UART_HandleTypeDef huart2;
+extern DMA_HandleTypeDef hdma_usart2_rx;
 extern QueueHandle_t msgQ;
 extern TaskHandle_t rdr;
 
 uint8_t freqbuf[5] = {0};
 uint8_t voltbuf[4] = {0};
 uint8_t rxbuf = 'n';
-
-extern QueueHandle_t msgQ;
 
 sig_t newSig;
 
@@ -43,8 +42,7 @@ unsigned char caret = '>';
 unsigned char clr = '\0';
 
 _Bool cr_flg = 0;
-_Bool cmd_flg = 0;
-_Bool prd_flg = 0;
+
 
 enum cmd Rx_st = ch;
 
@@ -53,13 +51,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 {
 		static int index = 0;
 
-		HAL_UART_Transmit(UART, &rxbuf, 1, 2);
+		HAL_UART_Transmit(&huart2, &rxbuf, 1, 2);
 
 		if(rxbuf == '\n' || rxbuf == '\r')
 		{
-			cmd_flg = 1;
+			cr_flg = 1;
 			index = 0;
-			HAL_UART_Transmit(UART, c_return, sizeof(c_return), 2);
+			HAL_UART_Transmit(&huart2, c_return, sizeof(c_return), 2);
 		}
 		else if(rxbuf == ' ')
 		{
@@ -112,18 +110,36 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 
 void read_Task(void * pvParameters)
 {
-	HAL_UART_Transmit(UART, &caret, sizeof(caret), 2);
+
+	TickType_t lastWake = 0;
+	TickType_t Period = pdMS_TO_TICKS(20);
+
+	HAL_UART_Transmit(&huart2, &caret, sizeof(caret), 2);
 
 	while(1)
 	{
-		HAL_UARTEx_ReceiveToIdle_DMA(&UART, &rxbuf, 1); // Begin DMA
-		__HAL_DMA_DISABLE_IT(&DMA, DMA_IT_HT);
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, &rxbuf, 1); // Begin DMA
+		__HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
 
 
-		if(cmd_flg)
+		if(cr_flg)
 		{
+			cr_flg = 0;
+			newSig.freq = atoi(freqbuf);
+			newSig.minV = voltbuf[0] + voltbuf[1]/10;
+			newSig.maxV = voltbuf[2] + voltbuf[3]/10;
+			printf("Calculating new signal...\n\n\r");
+			cmd_flg = 1;
 
+			if(xQueueSend(msgQ, &newSig, Period) != pdPass)
+			{
+				printf("Could not post new signal to mailbox\n\r");
+			}
 		}
+
+		lastWake = xTaskGetTickCount();
+		vTaskDelayUntil(lastWake, Period);
+
 
 
 

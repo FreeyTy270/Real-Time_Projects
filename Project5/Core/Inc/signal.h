@@ -13,6 +13,7 @@
 #define Fs 200
 #define TIM 8000000
 
+_Bool cmd_flg = 0;
 
 typedef enum sigtype {
 	RECT,
@@ -25,8 +26,8 @@ typedef struct signal {
 	_Bool channel;
 	sigType_t type;
 	double freq;
-	float amp;
-	int offset;
+	double minV;
+	double maxV;
 	int noise;
 	uint32_t *ROM;
 }sig_t;

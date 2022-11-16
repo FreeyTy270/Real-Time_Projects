@@ -44,7 +44,8 @@ void mkSig(sig_t *currSig)
 
 void ROM_Gen(sig_t *currSig)
 {
-	double amp_dig = (currSig->amp*4096/3.3);
+	double amp = currSig->maxV - currSig->minV;
+	double amp_dig = (amp*4096/3.3);
 
 	switch(currSig->type)
 	{
@@ -60,6 +61,8 @@ void ROM_Gen(sig_t *currSig)
 				{
 					currSig->ROM[i] = 0;
 				}
+
+				currSig->ROM[i] + currSig->minV;
 			}
 			break;
 		}
@@ -67,9 +70,9 @@ void ROM_Gen(sig_t *currSig)
 		{
 			for(int i = 0; i <= Fs/4; i++)
 			{
-				currSig->ROM[i] = (amp_dig/2)*(sin(i*2*PI/Fs) + currSig->offset);
+				currSig->ROM[i] = (amp_dig/2)*(sin(i*2*PI/Fs) + 1) + currSig->minV;
 				currSig->ROM[100 - i] = currSig->ROM[i];
-				currSig->ROM[100 + i] = (amp_dig/2)*(sin((100 + i)*2*PI/Fs) + currSig->offset);
+				currSig->ROM[100 + i] = (amp_dig/2)*(sin((100 + i)*2*PI/Fs) + 1) + currSig->minV;
 				currSig->ROM[Fs - 1 - i] = currSig->ROM[100 + i];
 			}
 			break;
@@ -80,16 +83,16 @@ void ROM_Gen(sig_t *currSig)
 
 			for(int i = 0; i < Fs/2; i++)
 			{
-				currSig->ROM[i] = 2*step*i;
+				currSig->ROM[i] = 2*step*i + currSig->minV;
 				currSig->ROM[Fs-1-i] = currSig->ROM[i];
 			}
 			break;
 		}
 		case ARB:
 		{
-			for(int i = 0; i <= Fs; i++)
+			for(int i = 0; i < 256; i++)
 			{
-				currSig->ROM[i] = (ekg[i] / amp_dig) * ekg[i];
+				currSig->ROM[i] = (ekg[i] / amp_dig) * ekg[i] + currSig->minV;
 			}
 		}
 	}

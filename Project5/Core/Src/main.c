@@ -143,12 +143,16 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  msgQ = xQueueCreate(1, sizeof(sig_t));
+  if(msgQ == 0)
+    {
+  	  printf("Unable to create msg queue\n\r");
+  	  exit(1);
+    }
   /* USER CODE END RTOS_QUEUES */
 
   /* USER CODE BEGIN RTOS_THREADS */
   xTaskCreate(mng_Task, "mngr", 1024, NULL, PriorityHigh, &mngr);
-  xTaskCreate(read_Task, "Reader", 256, NULL, PriorityAboveNormal, &rdr);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN WHILE */
@@ -436,13 +440,13 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void mng_Task(void * pvParameters)
 {
-	double est_freq_1 = 0;
-	double est_freq_2 = 0;
+	TickType_t Period = pdMS_TO_TICKS(20);
+	sig_t sigReq;
 
 	//msgQ = xQueueCreate(1, sizeof(sig_t));
 
-	sig_t signal_1 = {0, SIN, 10000, 1.5, 1, 0, sig1_ROM};
-	sig_t signal_2 = {1, RECT, 20000, 2, 1, 0, sig2_ROM};
+	sig_t signal_1 = {0, SIN, 10000, 0.5, 2.5, 0, sig1_ROM};
+	sig_t signal_2 = {1, RECT, 20000, 1, 2, 0, sig2_ROM};
 
 	mkSig(&signal_1);
 	mkSig(&signal_2);
@@ -454,39 +458,33 @@ void mng_Task(void * pvParameters)
 	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
 	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, sig2_ROM, Fs, DAC_ALIGN_12B_R);
 
+	xTaskCreate(read_Task, "Reader", 256, NULL, PriorityAboveNormal, &rdr);
+
 	while(1)
 	{
-		est_freq_1 = TIM/((TIM2->ARR + 1)*Fs);
-		est_freq_2 = TIM/((TIM4->ARR + 1)*Fs);
+		if(cmd_flg)
+		{
+			if(xQueueReceive(msgQ, &sigReq, Period) != pdPass)
+			{
+				printf("Could not retrieve signal request from queue\n\r");
+			}
 
-		printf("Expected Frequency for Signal 1: %.2f\tExpected Frequency for Signal 2: %.2f\n\r", est_freq_1, est_freq_2);
-		vTaskDelay(pdMS_TO_TICKS(5000));
-		if(signal_1.type < 3)
-		{
-			signal_1.type++;
-			printf("New signal type: %d\n\r", signal_1.type);
-		}
-		else
-		{
-			signal_1.type = 0;
-		}
+			if(sigReq.channel)
+			{
+				signal_2 = sigReq;
+				HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
+				mkSig(&signal_2);
+				HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, sig2_ROM, Fs, DAC_ALIGN_12B_R);
+			}
+			else
+			{
+				signal_1 = sigReq;
+				HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+				mkSig(&signal_1);
+				HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
+			}
 
-		if(signal_2.type < 3)
-		{
-			signal_2.type++;
-			printf("New signal type: %d\n\r", signal_2.type);
 		}
-		else
-		{
-			signal_2.type = 0;
-		}
-
-		HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-		HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
-		mkSig(&signal_1);
-		mkSig(&signal_2);
-		HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sig1_ROM, Fs, DAC_ALIGN_12B_R);
-		HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, sig2_ROM, Fs, DAC_ALIGN_12B_R);
 
 	}
 }
