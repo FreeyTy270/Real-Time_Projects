@@ -25,6 +25,8 @@ extern TaskHandle_t rdr;
 
 uint8_t freqbuf[5] = {0};
 uint8_t voltbuf[4] = {0};
+uint8_t nbuf[2] = {0};
+
 char sig_type[4];
 uint8_t rxbuf = 'n';
 int rightofone = 0;
@@ -42,6 +44,7 @@ enum cmd {
 };
 
 unsigned char caret[] = "\n\r> ";
+unsigned char cr[] = "\n\r";
 unsigned char clr = '\0';
 
 _Bool cr_flg = 0;
@@ -63,6 +66,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 			index = 0; //Clear the array index being used for frequency and voltage buffers
 			Rx_st = 0; // Reset receiver state variable
 			newSig.freq = 0; //Prime new signal for calculations
+
+			HAL_UART_Transmit(&huart2, cr, sizeof(cr), 2); //Echo character
 		}
 		else if(rxbuf == ' ') //Receiver state changed when user hits space bar
 		{
@@ -79,9 +84,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 				voltbuf[1] = '0';
 				index++;
 			}
-			else if(Rx_st == maxV && index != 4)
+			else if(Rx_st == maxV)
 			{
-				voltbuf[3] = '0';
+				if(index != 4)
+				{
+					voltbuf[3] = '0';
+				}
+				index = 0;
 			}
 			Rx_st++; //Begin looking for next value on cmd line
 		}
@@ -135,7 +144,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 				}
 				break;
 			case noise:
-				newSig.noise = rxbuf - 48;
+				nbuf[index] = rxbuf;
+				index++;
 				break;
 
 			}
@@ -170,11 +180,18 @@ void read_Task(void * pvParameters)
 				prd_flg = 0;
 				newSig.freq += freqbuf[rightofone]/10.0;
 			}
-				newSig.minV = (voltbuf[0] - 48.0) + (voltbuf[1] - 48.0)/10;
+
+			newSig.minV = (voltbuf[0] - 48.0) + (voltbuf[1] - 48.0)/10;
 			newSig.maxV = (voltbuf[2] - 48.0) + (voltbuf[3] - 48.0)/10;
+
+			newSig.noise = atoi(nbuf);
 
 			for(int i = 0; i < 5; i++)
 			{
+				if(i < 2)
+					nbuf[i] = 0;
+				if(i < 4)
+					voltbuf[i] = 0;
 				freqbuf[i] = 0;
 			}
 			for(int i = 0; i < 4; i++)

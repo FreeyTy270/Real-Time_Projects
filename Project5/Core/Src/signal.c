@@ -53,26 +53,23 @@ void ROM_Gen(sig_t *currSig)
 	double offset = currSig->minV/3.3*4096; //Include digital value of lowest voltage as offset
 
 	uint32_t rndNum = 0;
-	uint16_t bitMask = 0;
-	uint16_t noiseStp = 1;
+	uint16_t bitMsk = 0;
 
 	/*Noise calculation based on number of noisy bits requested*/
 	if(currSig->noise > 0)
 	{
+		int tmpMsk = 0;
 		HAL_RNG_GenerateRandomNumber(&hrng, &rndNum);
 
 		rndNum &= 0xFFF;
-		noiseStp = 0xF;
 
-		int tmpMask = 0;
-
-		for(int i = 1; i < currSig->noise; i++)
+		for(int i = 1; i <= currSig->noise; i++)
 		{
-			tmpMask = 1 << (currSig->noise - i);
-			bitMask |= tmpMask;
+			tmpMsk = 1 << (currSig->noise - i);
+			bitMsk |= tmpMsk;
 		}
 
-		rndNum &= bitMask;
+		rndNum &= bitMsk;
 	}
 
 	/*Here is where the ROM gets created. First looks at signal type and calculates values accordingly*/
@@ -91,11 +88,17 @@ void ROM_Gen(sig_t *currSig)
 					currSig->ROM[i] = 0; //For other half it is whatever minV is requested to be
 				}
 
-				if(i % noiseStp == 0) //Distance between noise affected samples
-				{
-					currSig->ROM[i] += rndNum; // Add noise to random sample
-				}
 				currSig->ROM[i] += offset; //Add offset to calculated value
+
+				if(currSig->noise > 0) //Distance between noise affected samples
+				{
+					for(int j = 1; j < currSig->noise; j++)
+					{
+						currSig->ROM[i] &= ~(1 << (currSig->noise - j));
+					}
+
+					currSig->ROM[i] |= rndNum;
+				}
 			}
 			break;
 		}
@@ -104,12 +107,26 @@ void ROM_Gen(sig_t *currSig)
 			for(int i = 0; i <= Fs/4; i++)
 			{
 				currSig->ROM[i] = (amp_dig/2)*(sin(i*2*PI/Fs) + 1) + offset; //Calc quarter wavelength of sine wave
-				if(i % noiseStp == 0)
+				if(currSig->noise > 0) //Distance between noise affected samples
 				{
-					currSig->ROM[i] += rndNum; //Add noise
+					for(int j = 1; j < currSig->noise; j++)
+					{
+						currSig->ROM[i] &= ~(1 << (currSig->noise - j));
+					}
+
+					currSig->ROM[i] |= rndNum;
 				}
 				currSig->ROM[100 - i] = currSig->ROM[i]; //Copy quarter wave found above in reverse order
 				currSig->ROM[100 + i] = (amp_dig/2)*(sin((100 + i)*2*PI/Fs) + 1) + offset; //Calc negative quarter of sine wave
+				if(currSig->noise > 0) //Distance between noise affected samples
+				{
+					for(int j = 1; j < currSig->noise; j++)
+					{
+						currSig->ROM[100 + i] &= ~(1 << (currSig->noise - j));
+					}
+
+					currSig->ROM[100 + i] |= rndNum;
+				}
 				currSig->ROM[Fs - 1 - i] = currSig->ROM[100 + i]; //Copy this new quarter wave
 			}
 			break;
@@ -121,9 +138,14 @@ void ROM_Gen(sig_t *currSig)
 			for(int i = 0; i < Fs/2; i++)
 			{
 				currSig->ROM[i] = 2*step*i + offset; //Build first half of triangle wave
-				if(i % noiseStp == 0)
+				if(currSig->noise > 0) //Distance between noise affected samples
 				{
-					currSig->ROM[i] += rndNum; //Add noise
+					for(int j = 1; j < currSig->noise; j++)
+					{
+						currSig->ROM[i] &= ~(1 << (currSig->noise - j));
+					}
+
+					currSig->ROM[i] |= rndNum;
 				}
 				currSig->ROM[Fs-1-i] = currSig->ROM[i]; //Copy to second half of signal for complete triangle
 			}
@@ -138,9 +160,14 @@ void ROM_Gen(sig_t *currSig)
 			for(int i = 0; i < Fs; i++)
 			{
 				currSig->ROM[i] = (uint32_t) (scale*(ekg[i] - 928) + offset); // scale ekg value and set within bounds
-				if(i % noiseStp == 0)
+				if(currSig->noise > 0) //Distance between noise affected samples
 				{
-					currSig->ROM[i] += rndNum; //Add noise
+					for(int j = 1; j < currSig->noise; j++)
+					{
+						currSig->ROM[i] &= ~(1 << (currSig->noise - j));
+					}
+
+					currSig->ROM[i] |= rndNum;
 				}
 			}
 		}
