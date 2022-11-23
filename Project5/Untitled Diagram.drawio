@@ -1,0 +1,72 @@
+<mxfile host="app.diagrams.net" modified="2022-11-22T03:41:52.793Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36" etag="oOfGmNMWqWt1d3kuox4Y" version="20.4.2" type="github">
+  <diagram id="L-Bz5IHk7UC-DgCshGZc" name="Page-1">
+    <mxGraphModel dx="1209" dy="634" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-2" value="Manager Task" style="swimlane;" vertex="1" parent="1">
+          <mxGeometry y="60" width="350" height="855" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="MT-TXkivbWZbnjXp8JWz-2" source="MT-TXkivbWZbnjXp8JWz-3" target="MT-TXkivbWZbnjXp8JWz-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-3" value="Task Creation" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.start_1;whiteSpace=wrap;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="40" y="30" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="MT-TXkivbWZbnjXp8JWz-2" source="MT-TXkivbWZbnjXp8JWz-4" target="MT-TXkivbWZbnjXp8JWz-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-4" value="Create Signal Objects (1 &amp;amp; 2)" style="whiteSpace=wrap;html=1;strokeWidth=2;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="30" y="110" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="MT-TXkivbWZbnjXp8JWz-2" source="MT-TXkivbWZbnjXp8JWz-6" target="MT-TXkivbWZbnjXp8JWz-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-6" value="Start Timers and DAC&amp;nbsp;" style="whiteSpace=wrap;html=1;strokeWidth=2;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="30" y="190" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="MT-TXkivbWZbnjXp8JWz-2" source="MT-TXkivbWZbnjXp8JWz-8">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="500" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-8" value="Wait for cmd flg" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=2;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="40" y="370" width="100" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-10" value="Susped for 20 ms" style="whiteSpace=wrap;html=1;strokeWidth=2;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="170" y="395" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="MT-TXkivbWZbnjXp8JWz-2" source="MT-TXkivbWZbnjXp8JWz-8" target="MT-TXkivbWZbnjXp8JWz-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="MT-TXkivbWZbnjXp8JWz-2" source="MT-TXkivbWZbnjXp8JWz-12" target="MT-TXkivbWZbnjXp8JWz-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-12" value="Create Reader Task" style="whiteSpace=wrap;html=1;strokeWidth=2;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="30" y="280" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="MT-TXkivbWZbnjXp8JWz-2" source="MT-TXkivbWZbnjXp8JWz-21" target="MT-TXkivbWZbnjXp8JWz-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="MT-TXkivbWZbnjXp8JWz-2" source="MT-TXkivbWZbnjXp8JWz-21" target="MT-TXkivbWZbnjXp8JWz-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-21" value="Signal 1 or 2?" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=2;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="35" y="600" width="110" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-23" value="Generate Signal 2 ROM" style="whiteSpace=wrap;html=1;strokeWidth=2;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="170" y="625" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-25" value="Generate Signal 1 ROM" style="whiteSpace=wrap;html=1;strokeWidth=2;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="30" y="730" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-29" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="MT-TXkivbWZbnjXp8JWz-2" source="MT-TXkivbWZbnjXp8JWz-28" target="MT-TXkivbWZbnjXp8JWz-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="MT-TXkivbWZbnjXp8JWz-28" value="&lt;br&gt;&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(248, 249, 250); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;Get signal request from Queue&lt;/span&gt;&lt;br&gt;" style="shape=parallelogram;html=1;strokeWidth=2;perimeter=parallelogramPerimeter;whiteSpace=wrap;rounded=1;arcSize=12;size=0.23;" vertex="1" parent="MT-TXkivbWZbnjXp8JWz-2">
+          <mxGeometry x="30" y="500" width="120" height="70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
