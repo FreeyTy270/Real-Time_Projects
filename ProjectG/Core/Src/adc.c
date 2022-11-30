@@ -30,10 +30,6 @@ void adc_Task(void * pvParameters)
 
 	while(1)
 	{
-		if(dir)
-		{
-
-		}
 		if(cap_flg)
 		{
 			cap_flg = 0;

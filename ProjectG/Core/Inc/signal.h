@@ -27,6 +27,7 @@ typedef struct signal {
 	double minV;
 	double maxV;
 	int noise;
+	uint32_t *ROM;
 }sig_t;
 
 void mkSig(sig_t *currSig);
