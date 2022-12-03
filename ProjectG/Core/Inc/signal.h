@@ -8,9 +8,9 @@
 #ifndef INC_SIGNAL_H_
 #define INC_SIGNAL_H_
 
-#include "globals.h"
-
 #define TIM 8000000
+
+#include "globals.h"
 
 void mkSig(sig_t *currSig);
 void ROM_Gen(sig_t *currSig);

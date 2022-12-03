@@ -45,6 +45,13 @@ enum cmd Rx_st = dir;
 
 int attempts = 3;
 
+_Bool full = 0;
+_Bool cr_flg = 0;
+_Bool cmd_flg = 0;
+_Bool rd_flg = 0;
+_Bool out_flg = 0;
+_Bool adc_done = 0;
+
 /*Callback for UART receiver. Every 1 character triggers this callback function which does light processing of value*/
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 {
@@ -95,6 +102,9 @@ void read_Task(void * pvParameters)
 	TickType_t Period = pdMS_TO_TICKS(20);
 	TickType_t wait = pdMS_TO_TICKS(2300);
 
+	double maxV = 0;
+	double minV = 0;
+
 	HAL_UART_Transmit(&huart2, caret, sizeof(caret), 2);
 
 	while(1)
@@ -108,21 +118,23 @@ void read_Task(void * pvParameters)
 
 			if(rd_flg)
 			{
-				printf("Capturing signal...\n\n\r");
+				printf("Capturing signal\n\r");
 				newSig.min = 4096;
 				newSig.max = 0;
 				newSig.freq = 1000;
-				xTaskCreate(adc_Task, "adc", 512, NULL, PriorityHigh, &adc);
+				xTaskCreate(adc_Task, "adc", 512, NULL, PriorityNormal, &adc);
 				lastWake = xTaskGetTickCount();
 				vTaskDelayUntil(&lastWake, wait);
 				if(adc_done)
 				{
 					adc_done = 0;
 					attempts = 3;
-					printf("******* SIGNAL CAPTURED *******\n\r");
+					maxV = (newSig.max/4096*3.3);
+					minV = (newSig.min/4096*3.3);
+					printf("\n\n******* SIGNAL CAPTURED *******\n\r");
 					printf("Type: %c\n\r", newSig.type);
 					printf("Frequency: %i\n\r", newSig.freq);
-					printf("Max Voltage: %d\tMin Voltage: %d\n\n\r", (int) (newSig.max/4096*3.3), (int) (newSig.min/4096*3.3));
+					printf("Max Voltage: %.2f\tMin Voltage: %.2f\n\n\r", maxV, minV);
 					HAL_UART_Transmit(&huart2, caret, sizeof(caret), 2);
 					rd_flg = 0;
 				}
@@ -144,7 +156,7 @@ void read_Task(void * pvParameters)
 			else if(out_flg)
 			{
 				newSig.width = atoi(nbuf);
-				printf("Outputting signal from channel %d...\n\n\r", newSig.channel);
+				printf("Outputting signal from channel %d...\n\n\r", newSig.channel + 1);
 				if(xQueueSend(mbx, &newSig, Period) != pdTRUE)
 				{
 					printf("Could not post new signal to mailbox\n\r");

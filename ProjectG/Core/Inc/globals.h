@@ -8,10 +8,6 @@
 #ifndef INC_GLOBALS_H_
 #define INC_GLOBALS_H_
 
-#include "stm32l4xx_hal.h"
-
-#define SR 20000
-
 /* Signal Characteristics */
 typedef enum sigtype {
 	ARB = 65,
@@ -31,7 +27,7 @@ typedef struct signal {
 
 /* RTOS Priority Enum */
 enum  Priority{
-  PriorityIdle = 0,          ///< priority: idle (lowest)
+  PriorityIdle,          ///< priority: idle (lowest)
   PriorityLow,                    ///< priority: low
   PriorityBelowNormal,          ///< priority: below normal
   PriorityNormal,          ///< priority: normal (default)
@@ -42,10 +38,13 @@ enum  Priority{
 };
 
 /* Status Flags */
-_Bool full = 0;
-_Bool cr_flg = 0;
-_Bool cmd_flg = 0;
-_Bool rd_flg = 0;
-_Bool out_flg = 0;
-_Bool adc_done = 0;
+extern _Bool full;
+extern _Bool cr_flg;
+extern _Bool cmd_flg;
+extern _Bool rd_flg;
+extern _Bool out_flg;
+extern _Bool adc_done;
+
+extern unsigned long sum;
+
 #endif /* INC_GLOBALS_H_ */

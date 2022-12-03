@@ -48,7 +48,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define SR 20000
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -70,6 +70,7 @@ TaskHandle_t dac;
 QueueHandle_t mbx;
 
 int idx = 0;
+unsigned long sum = 0;
 extern sig_t newSig;
 uint16_t RRM[SR] = {0};
 /* USER CODE END PV */
@@ -572,6 +573,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	  HAL_ADC_Start(&hadc1);
 	  HAL_ADC_PollForConversion(&hadc1, 1);
 	  RRM[idx] = HAL_ADC_GetValue(&hadc1);
+	  sum += RRM[idx];
 	  newSig.min = newSig.min > RRM[idx] ? RRM[idx] : newSig.min;
 	  newSig.max = newSig.max < RRM[idx] ? RRM[idx] : newSig.max;
 	  idx++;

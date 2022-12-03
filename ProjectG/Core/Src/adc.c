@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "stm32l4xx_hal.h"
 
 #include "globals.h"
 #include "adc.h"
@@ -22,9 +23,9 @@ void adc_Task(void * pvParameters)
 {
 	TickType_t lastwake = 0;
 
-	printf("Stopping DAC for conversions...\n\r");
 	HAL_DAC_Stop_DMA(&hdac1, 1);
 	HAL_DAC_Stop_DMA(&hdac1, 2);
+
 	HAL_TIM_Base_Start_IT(&htim6);
 
 	while(1)

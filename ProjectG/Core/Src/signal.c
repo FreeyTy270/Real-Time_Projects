@@ -14,14 +14,14 @@
 #define PI 3.14159265359
 
 extern uint16_t RRM[];
+extern TIM_HandleTypeDef htim4;
+extern TIM_HandleTypeDef htim2;
 
 /*Single function call for generating the ROM and changing the timer values. Called by manager task*/
 void mkSig(sig_t *currSig)
 {
-	/*ROM_Gen(currSig);
-	tim_adj(currSig->channel, currSig->freq, currSig->width);*/
-
-	printf("Making new signal... beep boop\n\r");
+	ROM_Gen(currSig);
+	tim_adj(currSig->channel, currSig->freq, currSig->width);
 }
 
 /*Generates ROM values for signal based on signal type and max/min values*/
