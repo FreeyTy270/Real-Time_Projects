@@ -9,34 +9,32 @@
 #include <stdlib.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "stm32l4xx_hal.h"
+
+#include "globals.h"
 #include "adc.h"
 
-#define SR 20000
-
-_Bool cap_flg = 0;
-_Bool dir = 0;
-int min = 4095;
-uint16_t cap_buf[SR] = {0};
-
+extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim6;
-extern TaskHandle_t adc;
-
+extern sig_t newSig;
 
 void adc_Task(void * pvParameters)
 {
 	TickType_t lastwake = 0;
+
+	printf("Stopping DAC for conversions...\n\r");
+	HAL_DAC_Stop_DMA(&hadc1, 1);
+	HAL_DAC_Stop_DMA(&hadc1, 2);
 	HAL_TIM_Base_Start_IT(&htim6);
 
 	while(1)
 	{
-		if(cap_flg)
+		if(full)
 		{
-			cap_flg = 0;
-			for(int i = 0; i < SR; i++)
-			{
-				cap_buf[i] = 0;
-			}
+			HAL_TIM_Base_Stop_IT(&htim6);
+			printf("...Doing Math...\n\r");
+			adc_done = 1;
+			full = 0;
+			vTaskDelete(NULL);
 		}
 		lastwake = xTaskGetTickCount();
 		vTaskDelayUntil(&lastwake, pdMS_TO_TICKS(20));

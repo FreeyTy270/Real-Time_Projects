@@ -23,12 +23,17 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FreeRTOS.h"
+#include "timers.h"
+#include "queue.h"
+#include "semphr.h"
+#include "event_groups.h"
 #include "task.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "adc.h"
+#include "globals.h"
+#include "uart.h"
 #include "dac.h"
 /* USER CODE END Includes */
 
@@ -58,15 +63,15 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_rx;
 /* USER CODE BEGIN PV */
-TaskHandle_t adc;
+TaskHandle_t rdr;
 TaskHandle_t dac;
+QueueHandle_t mbx;
 
 int idx = 0;
-extern _Bool cap_flg;
-extern int min;
-extern uint16_t cap_buf[];
-extern _Bool dir;
+extern sig_t newSig;
+uint16_t RRM[SR] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -79,7 +84,6 @@ static void MX_TIM6_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM4_Init(void);
-
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -141,16 +145,19 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  mbx = xQueueCreate(1, sizeof(sig_t));
+  if(!mbx)
+  {
+	  printf("Could not build mailbox\n\r");
+	  exit(1);
+  }
   /* USER CODE END RTOS_QUEUES */
 
-
   /* USER CODE BEGIN RTOS_THREADS */
-  xTaskCreate(adc_Task, "adc", 1024, NULL, PriorityNormal, &adc);
-  xTaskCreate(dac_Task, "dac", 1024, NULL, PriorityNormal, &dac);
+  xTaskCreate(read_Task, "rdr", 1024, NULL, PriorityHigh, &rdr);
+  xTaskCreate(dac_Task, "dac", 512, NULL, PriorityNormal, &dac);
   /* USER CODE END RTOS_THREADS */
 
-  /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   vTaskStartScheduler();
@@ -510,6 +517,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
 
 }
 
@@ -540,24 +550,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END 5 */
-}
-
 /**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM1 interrupt took place, inside
@@ -579,12 +571,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
 	  HAL_ADC_Start(&hadc1);
 	  HAL_ADC_PollForConversion(&hadc1, 1);
-	  cap_buf[idx] = HAL_ADC_GetValue(&hadc1);
-	  min = min > cap_buf[idx] ? cap_buf[idx] : min;
+	  RRM[idx] = HAL_ADC_GetValue(&hadc1);
+	  newSig.min = newSig.min > RRM[idx] ? RRM[idx] : newSig.min;
+	  newSig.max = newSig.max < RRM[idx] ? RRM[idx] : newSig.max;
 	  idx++;
 	  if(idx == 20000)
 	  {
-		  cap_flg = 1;
+		  full = 1;
 		  idx = 0;
 	  }
   }

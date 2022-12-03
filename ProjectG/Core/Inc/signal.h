@@ -9,30 +9,13 @@
 #define INC_SIGNAL_H_
 
 #include <stdint.h>
+#include "globals.h"
 
-#define Fs 200
 #define TIM 8000000
-
-typedef enum sigtype {
-	RECT,
-	TRI,
-	SIN,
-	ARB,
-}sigType_t;
-
-typedef struct signal {
-	_Bool channel;
-	sigType_t type;
-	double freq;
-	double minV;
-	double maxV;
-	int noise;
-	uint32_t *ROM;
-}sig_t;
 
 void mkSig(sig_t *currSig);
 void ROM_Gen(sig_t *currSig);
-void tim_adj(_Bool ch, double freq);
+void tim_adj(_Bool ch, double freq, int width);
 
 
 #endif /* INC_SIGNAL_H_ */
