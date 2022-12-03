@@ -8,8 +8,6 @@
 #ifndef INC_ADC_H_
 #define INC_ADC_H_
 
-TaskHandle_t adc;
-
 void adc_Task(void * pvParameters);
 
 #endif /* INC_ADC_H_ */

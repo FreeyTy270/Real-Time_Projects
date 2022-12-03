@@ -8,7 +8,6 @@
 #ifndef INC_SIGNAL_H_
 #define INC_SIGNAL_H_
 
-#include <stdint.h>
 #include "globals.h"
 
 #define TIM 8000000

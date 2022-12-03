@@ -17,14 +17,14 @@
 
 #include "globals.h"
 #include "uart.h"
-#include "dac.h"
 #include "adc.h"
 
+TaskHandle_t adc;
 extern QueueHandle_t mbx;
 extern TaskHandle_t rdr;
-extern TaskHandle_t adc;
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_rx;
+extern ADC_HandleTypeDef hadc1;
 
 uint8_t nbuf[5] = {0};
 
@@ -43,6 +43,8 @@ unsigned char clr = '\0';
 
 enum cmd Rx_st = dir;
 
+int attempts = 3;
+
 /*Callback for UART receiver. Every 1 character triggers this callback function which does light processing of value*/
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 {
@@ -56,7 +58,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 		{
 			cr_flg = 1; //Set the flag which is checked in the reader task below
 			index = 0; //Clear the array index being used for frequency and voltage buffers
-			Rx_st = 0; // Reset receiver state variable
+			Rx_st = dir; // Reset receiver state variable
 
 			HAL_UART_Transmit(&huart2, cr, sizeof(cr), 2); //Echo character
 		}
@@ -71,6 +73,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 			case dir:
 				if(rxbuf == 'c' || rxbuf == 'C')
 					rd_flg = 1;
+				else if(rxbuf == 'o' || rxbuf == 'O')
+					out_flg = 1;
 				break;
 			case ch:
 				newSig.channel = (rxbuf - 48) - 1; //channel is a boolean variable for size, 0 for ch 1, 1 for ch 2. Subtract 48 to get int value from char
@@ -101,8 +105,6 @@ void read_Task(void * pvParameters)
 
 		if(cr_flg)
 		{
-			cr_flg = 0;
-			newSig.width = atoi(nbuf);
 
 			if(rd_flg)
 			{
@@ -115,28 +117,42 @@ void read_Task(void * pvParameters)
 				vTaskDelayUntil(&lastWake, wait);
 				if(adc_done)
 				{
+					adc_done = 0;
+					attempts = 3;
 					printf("******* SIGNAL CAPTURED *******\n\r");
 					printf("Type: %c\n\r", newSig.type);
 					printf("Frequency: %i\n\r", newSig.freq);
 					printf("Max Voltage: %d\tMin Voltage: %d\n\n\r", (int) (newSig.max/4096*3.3), (int) (newSig.min/4096*3.3));
 					HAL_UART_Transmit(&huart2, caret, sizeof(caret), 2);
+					rd_flg = 0;
 				}
 				else
 				{
+					if(!attempts)
+					{
+						printf("No more attempts remain. Exiting program, please reset...\n");
+						exit(1);
+					}
 					printf("ERROR: Capture took too long. Retrying...\n");
 					HAL_ADC_Stop(&hadc1);
 					vTaskDelete(adc);
+					attempts--;
 				}
+
 			}
 
 			else if(out_flg)
 			{
+				newSig.width = atoi(nbuf);
 				printf("Outputting signal from channel %d...\n\n\r", newSig.channel);
 				if(xQueueSend(mbx, &newSig, Period) != pdTRUE)
 				{
 					printf("Could not post new signal to mailbox\n\r");
 				}
+				out_flg = 0;
 			}
+
+			cr_flg = 0;
 
 		}
 

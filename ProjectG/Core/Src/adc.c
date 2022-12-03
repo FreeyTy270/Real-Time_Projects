@@ -14,6 +14,7 @@
 #include "adc.h"
 
 extern ADC_HandleTypeDef hadc1;
+extern DAC_HandleTypeDef hdac1;
 extern TIM_HandleTypeDef htim6;
 extern sig_t newSig;
 
@@ -22,8 +23,8 @@ void adc_Task(void * pvParameters)
 	TickType_t lastwake = 0;
 
 	printf("Stopping DAC for conversions...\n\r");
-	HAL_DAC_Stop_DMA(&hadc1, 1);
-	HAL_DAC_Stop_DMA(&hadc1, 2);
+	HAL_DAC_Stop_DMA(&hdac1, 1);
+	HAL_DAC_Stop_DMA(&hdac1, 2);
 	HAL_TIM_Base_Start_IT(&htim6);
 
 	while(1)
