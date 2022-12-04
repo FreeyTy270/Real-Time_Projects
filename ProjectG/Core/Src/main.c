@@ -71,6 +71,8 @@ QueueHandle_t mbx;
 
 int idx = 0;
 unsigned long sum = 0;
+int mindx = 0;
+int maxdx = 0;
 extern sig_t newSig;
 uint16_t RRM[SR] = {0};
 /* USER CODE END PV */
@@ -358,7 +360,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 10 - 1;
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 8000 - 1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -403,9 +405,9 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 8000 - 1;
+  htim4.Init.Prescaler = 0;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 10 - 1;
+  htim4.Init.Period = 8000 - 1;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -574,8 +576,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	  HAL_ADC_PollForConversion(&hadc1, 1);
 	  RRM[idx] = HAL_ADC_GetValue(&hadc1);
 	  sum += RRM[idx];
-	  newSig.min = newSig.min > RRM[idx] ? RRM[idx] : newSig.min;
-	  newSig.max = newSig.max < RRM[idx] ? RRM[idx] : newSig.max;
+	  if(newSig.min > RRM[idx])
+	  {
+		  newSig.min = RRM[idx];
+		  mindx = idx;
+	  }
+	  if(newSig.max < RRM[idx])
+	  {
+		  newSig.max = RRM[idx];
+		  maxdx = idx;
+	  }
 	  idx++;
 	  if(idx == 20000)
 	  {
