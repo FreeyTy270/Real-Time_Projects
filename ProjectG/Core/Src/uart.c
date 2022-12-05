@@ -129,11 +129,14 @@ void read_Task(void * pvParameters)
 				{
 					adc_done = 0;
 					attempts = 3;
-					maxV = (newSig.max/4096*3.3);
-					minV = (newSig.min/4096*3.3);
+					maxV = (newSig.max * toreal);
+					minV = (newSig.min * toreal);
 					printf("\n\n******* SIGNAL CAPTURED *******\n\r");
 					printf("Type: %c\n\r", newSig.type);
-					printf("Frequency: %i\n\r", newSig.freq);
+					if(newSig.freq == -1)
+						printf("Frequency: N/A\n\r");
+					else
+						printf("Frequency: %i\n\r", newSig.freq);
 					printf("Max Voltage: %.2f\tMin Voltage: %.2f\n\n\r", maxV, minV);
 					HAL_UART_Transmit(&huart2, caret, sizeof(caret), 2);
 					rd_flg = 0;
@@ -156,6 +159,16 @@ void read_Task(void * pvParameters)
 			else if(out_flg)
 			{
 				newSig.width = atoi(nbuf);
+				if(newSig.width < 400 && newSig.width > 0)
+				{
+					printf("Not long enough for a clean signal. Showing full period...\n\r");
+					newSig.width = 0;
+				}
+				else if(newSig.width == 0)
+					newSig.width = 5000;
+				else
+					newSig.width /= 200;
+
 				printf("Outputting signal from channel %d...\n\n\r", newSig.channel + 1);
 				if(xQueueSend(mbx, &newSig, Period) != pdTRUE)
 				{

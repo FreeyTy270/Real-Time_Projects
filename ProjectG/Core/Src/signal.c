@@ -12,8 +12,12 @@
 #include "math.h"
 
 #define PI 3.14159265359
+#define FS 5000
+#define TIM 80000000
 
 extern uint16_t RRM[];
+uint16_t sig1_ROM[FS] = {0};
+uint16_t sig2_ROM[FS] = {0};
 extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim2;
 
@@ -27,47 +31,75 @@ void mkSig(sig_t *currSig)
 /*Generates ROM values for signal based on signal type and max/min values*/
 void ROM_Gen(sig_t *currSig)
 {
-	double amp = currSig->max - currSig->min; //Calc the amplitude of desired signal
+	double amp = currSig->max - currSig->min; //Calc the amplitude of desired signal;
+	int j = 0;
+	int i = 0;
 
 	/*Here is where the ROM gets created. First looks at signal type and calculates values accordingly*/
 	switch(currSig->type)
 	{
+
 		case RECT:
 		{
-			for(int i = 0; i < currSig->width; i++)
+			while(j < FS)
 			{
-				if(i < currSig->width/2)
+				for(i = 0; i < currSig->width; i++)
 				{
-					RRM[i] = currSig->max; //For half of period the signal is high
+					if(i < FS/2)
+					{
+						currSig->ROM[j] = currSig->max; //For half of period the signal is high
+					}
+					else
+					{
+						currSig->ROM[j] = currSig->min; //For other half it is whatever minV is requested to be
+					}
+
+					j++;
 				}
-				else
-				{
-					RRM[i] = currSig->min; //For other half it is whatever minV is requested to be
-				}
+
 			}
+			j = 0;
+			i = 0;
 			break;
 		}
 		case SIN:
 		{
-			for(int i = 0; i <= currSig->width/4; i++)
+			while(j < FS)
 			{
-				RRM[i] = (amp/2)*(sin(i*2*PI/currSig->width) + 1); //Calc quarter wavelength of sine wave
-				RRM[100 - i] = RRM[i]; //Copy quarter wave found above in reverse order
-				RRM[100 + i] = (amp/2)*(sin((100 + i)*2*PI/currSig->width) + 1); //Calc negative quarter of sine wave
-				RRM[currSig->width - 1 - i] = RRM[100 + i]; //Copy this new quarter wave
+				for(int i = 0; i <= currSig->width; i++)
+				{
+					currSig->ROM[j] = (amp/2)*(sin(i*2*PI/FS) + 1); //Calc quarter wavelength of sine wave
+					j++;
+				}
 			}
+			j = 0;
+			i = 0;
 			break;
 		}
 		case TRI:
 		{
-			double step = amp/currSig->width; //step size to reach the max amplitude in the correct number of samples
-
-			for(int i = 0; i < currSig->width/2; i++)
+			double step = amp/FS; //step size to reach the max amplitude in the correct number of samples
+			while(j < FS)
 			{
-				RRM[i] = 2*step*i; //Build first half of triangle wave
-				RRM[currSig->width-1-i] = RRM[i]; //Copy to second half of signal for complete triangle
+				for(int i = 0; i < currSig->width; i++)
+				{
+					currSig->ROM[j] = 2*step*i; //Build first half of triangle wave
+					j++;
+				}
 			}
+			j = 0;
+			i = 0;
 			break;
+		}
+		case ARB:
+		{
+			while(j < FS)
+			{
+				for(i = 0; i < currSig->width; i++)
+					currSig->ROM[j] = RRM[i];
+			}
+			j = 0;
+			i = 0;
 		}
 	}
 }
@@ -80,7 +112,7 @@ void tim_adj(_Bool ch, double freq, int width)
 	Timer = ch ? TIM4 : TIM2; //Choose correct timer
 	uint32_t oldARR = Timer->ARR; //Save previous ARR value for triggering update event
 
-	uint32_t newARR = (TIM/(freq * width)) - 1; //Calculate new ARR value
+	uint32_t newARR = (TIM/(freq * FS)) - 1; //Calculate new ARR value
 	Timer->ARR = newARR; //Set new ARR value in buffer
 	Timer->CNT = oldARR; //Trigger update event to set new timer value
 

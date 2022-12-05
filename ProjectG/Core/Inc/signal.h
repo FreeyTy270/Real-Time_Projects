@@ -8,8 +8,6 @@
 #ifndef INC_SIGNAL_H_
 #define INC_SIGNAL_H_
 
-#define TIM 8000000
-
 #include "globals.h"
 
 void mkSig(sig_t *currSig);

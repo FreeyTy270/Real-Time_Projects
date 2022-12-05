@@ -8,6 +8,8 @@
 #ifndef INC_GLOBALS_H_
 #define INC_GLOBALS_H_
 
+#include <inttypes.h>
+
 /* Signal Characteristics */
 typedef enum sigtype {
 	ARB = 65,
@@ -23,6 +25,7 @@ typedef struct signal {
 	int min;
 	int max;
 	int width;
+	uint16_t *ROM;
 }sig_t;
 
 /* RTOS Priority Enum */
@@ -45,6 +48,8 @@ extern _Bool rd_flg;
 extern _Bool out_flg;
 extern _Bool adc_done;
 
-extern unsigned long sum;
+extern double sum;
+extern double todig;
+extern double toreal;
 
 #endif /* INC_GLOBALS_H_ */

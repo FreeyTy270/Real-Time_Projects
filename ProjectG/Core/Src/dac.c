@@ -16,9 +16,11 @@
 #include "signal.h"
 #include "dac.h"
 
-#define SR 20000
+#define FS 5000
 
 extern uint16_t RRM[];
+extern uint16_t sig1_ROM[];
+extern uint16_t sig2_ROM[];
 extern QueueHandle_t mbx;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim4;
@@ -48,16 +50,18 @@ void dac_Task(void * pvParameters)
 			if(sigReq.channel)
 			{
 				signal_2 = sigReq;
+				signal_2.ROM = sig2_ROM;
 				HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
 				mkSig(&signal_2);
-				HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (unsigned long *) RRM, SR, DAC_ALIGN_12B_R);
+				HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t *) signal_2.ROM, FS, DAC_ALIGN_12B_R);
 			}
 			else
 			{
 				signal_1 = sigReq;
+				signal_1.ROM = sig1_ROM;
 				HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
 				mkSig(&signal_1);
-				HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (unsigned long *) RRM, SR, DAC_ALIGN_12B_R);
+				HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *) signal_1.ROM, FS, DAC_ALIGN_12B_R);
 			}
 
 		}
