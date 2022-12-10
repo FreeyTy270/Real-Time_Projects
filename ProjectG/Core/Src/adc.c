@@ -58,8 +58,7 @@ void calc_sig(void)
 {
 	double sig = 0;
 	float wiggle = 0.05;
-	float prev = 0;
-	float post = 0;
+	float diff = 0;
 	int VPP_dig = newSig.max - newSig.min;
 	float VPP = VPP_dig * toreal;
 	int dist = mindx;
@@ -76,16 +75,8 @@ void calc_sig(void)
 	else
 		newSig.type = ARB;
 
-	if(newSig.type == RECT)
-	{
-		do
-		{
-			dist++;
-			prev = (RRM[dist]*toreal) - (RRM[dist - 1]*toreal);
-		}while(prev <= VPP - 10);
-		newSig.freq = 1/((dist - mindx) * 2 * 0.0001);
-	}
-	else if(newSig.type == ARB)
+
+	if(newSig.type == ARB)
 	{
 		newSig.freq = -1;
 	}
@@ -94,9 +85,8 @@ void calc_sig(void)
 		do
 		{
 			dist++;
-			prev = (RRM[dist - 1]*toreal) - (RRM[dist]*toreal);
-			post = (RRM[dist + 1]*toreal) - (RRM[dist]*toreal);
-		}while(post > 0 && prev < 0);
+			diff = newSig.max*toreal - (RRM[dist]*toreal);
+		}while(diff >= 0.055);
 		newSig.freq = 1/((dist - mindx) * 2 * 0.0001);
 	}
 

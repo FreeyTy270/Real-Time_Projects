@@ -25,7 +25,7 @@ typedef struct signal {
 	int min;
 	int max;
 	int width;
-	uint16_t *ROM;
+	uint32_t *ROM;
 }sig_t;
 
 /* RTOS Priority Enum */

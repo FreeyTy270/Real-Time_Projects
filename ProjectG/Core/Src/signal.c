@@ -12,12 +12,12 @@
 #include "math.h"
 
 #define PI 3.14159265359
-#define FS 5000
+#define FS 2500
 #define TIM 80000000
 
 extern uint16_t RRM[];
-uint16_t sig1_ROM[FS] = {0};
-uint16_t sig2_ROM[FS] = {0};
+uint32_t sig1_ROM[FS] = {0};
+uint32_t sig2_ROM[FS] = {0};
 extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim2;
 
@@ -25,7 +25,7 @@ extern TIM_HandleTypeDef htim2;
 void mkSig(sig_t *currSig)
 {
 	ROM_Gen(currSig);
-	tim_adj(currSig->channel, currSig->freq, currSig->width);
+	//tim_adj(currSig->channel, currSig->freq, currSig->width);
 }
 
 /*Generates ROM values for signal based on signal type and max/min values*/
@@ -68,7 +68,7 @@ void ROM_Gen(sig_t *currSig)
 			{
 				for(int i = 0; i <= currSig->width; i++)
 				{
-					currSig->ROM[j] = (amp/2)*(sin(i*2*PI/FS) + 1); //Calc quarter wavelength of sine wave
+					currSig->ROM[j] = (amp/2)*(sin(i*2*PI/FS) + 1) + currSig->min; //Calc quarter wavelength of sine wave
 					j++;
 				}
 			}
@@ -84,6 +84,7 @@ void ROM_Gen(sig_t *currSig)
 				for(int i = 0; i < currSig->width; i++)
 				{
 					currSig->ROM[j] = 2*step*i; //Build first half of triangle wave
+					currSig->ROM[FS-1-j] = currSig->ROM[j];
 					j++;
 				}
 			}

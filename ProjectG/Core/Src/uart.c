@@ -159,21 +159,22 @@ void read_Task(void * pvParameters)
 			else if(out_flg)
 			{
 				newSig.width = atoi(nbuf);
-				if(newSig.width < 400 && newSig.width > 0)
+				if(newSig.width < 800 && newSig.width > 0)
 				{
 					printf("Not long enough for a clean signal. Showing full period...\n\r");
 					newSig.width = 0;
 				}
 				else if(newSig.width == 0)
-					newSig.width = 5000;
+					newSig.width = 2500;
 				else
-					newSig.width /= 200;
+					newSig.width /= 800;
 
 				printf("Outputting signal from channel %d...\n\n\r", newSig.channel + 1);
 				if(xQueueSend(mbx, &newSig, Period) != pdTRUE)
 				{
 					printf("Could not post new signal to mailbox\n\r");
 				}
+				printf("Signal posted to mailbox...\n\r");
 				out_flg = 0;
 			}
 
@@ -183,8 +184,6 @@ void read_Task(void * pvParameters)
 
 		lastWake = xTaskGetTickCount();
 		vTaskDelayUntil(&lastWake, Period);
-
-
 
 
 	}
